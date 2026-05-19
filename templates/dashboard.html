@@ -50,13 +50,66 @@
       </div>
     </div>
   </div>
+  <!-- EMR → 전산 반영 → 청구 흐름도 -->
+  <div class="card" style="padding:1.25rem 1.5rem">
+    <div class="card-hd" style="margin-bottom:.875rem">
+      <div><div class="card-title">문제 구조 · EMR 입력–전산 반영–청구 흐름</div><div class="card-sub">입력이 완료되어도 각 단계의 반영 여부를 별도 확인해야 함</div></div>
+    </div>
+    <div style="display:flex;align-items:stretch;gap:0">
+      <!-- 단계 1 -->
+      <div style="flex:1;background:var(--pri-hl);border:1px solid rgba(59,130,246,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pri);margin-bottom:.5rem">① EMR 입력</div>
+        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">간호사 처방·처치 기록</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">산소 flow 변경<br>소모품 사용 기록<br>인공호흡기 시간 입력</div>
+        <div style="margin-top:.625rem;font-size:.65rem;color:var(--pri);background:rgba(59,130,246,.1);border-radius:4px;padding:3px 7px;display:inline-block">EMR에 기록됨</div>
+      </div>
+      <!-- 화살표 -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">자동 반영?</span>
+      </div>
+      <!-- 단계 2 -->
+      <div style="flex:1;background:var(--warn-hl);border:1px solid rgba(245,158,11,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);margin-bottom:.5rem">② 전산 반영</div>
+        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">청구 시스템 수량 확정</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">연속형 항목 일괄 정산<br>재고 수량 대조<br>이브닝 cost 처리</div>
+        <div style="margin-top:.625rem;font-size:.65rem;color:var(--warn);background:rgba(245,158,11,.1);border-radius:4px;padding:3px 7px;display:inline-block">⚠ 수동 확인 필요</div>
+      </div>
+      <!-- 화살표 -->
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">일치 여부?</span>
+      </div>
+      <!-- 단계 3 -->
+      <div style="flex:1;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ok);margin-bottom:.5rem">③ 청구 완료</div>
+        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">실제 수가 청구 확정</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">보험 청구 수량 확정<br>입력값 = 청구값 일치<br>교대별 정산 완료</div>
+        <div style="margin-top:.625rem;font-size:.65rem;color:var(--ok);background:rgba(16,185,129,.1);border-radius:4px;padding:3px 7px;display:inline-block">✓ 청구 반영</div>
+      </div>
+      <!-- 문제 박스 -->
+      <div style="display:flex;align-items:center;padding:0 .75rem">
+        <div style="width:1px;height:60%;background:var(--bdr)"></div>
+      </div>
+      <div style="flex:1.1;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);padding:.875rem 1rem;border-left:3px solid var(--err)">
+        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--err);margin-bottom:.5rem">⚡ 현재 문제</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.7">
+          · ①→② 자동 반영 보장 없음<br>
+          · 연속형 항목은 교대 중 입력해도<br>&nbsp;&nbsp;이브닝 cost 별도 정산 필요<br>
+          · ②→③ 불일치 즉시 확인 불가<br>
+          · 재고 수량 ≠ 청구 수량 가능성
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="alert" id="alert-box">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--warn);flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     <span id="alert-text" class="alert-txt"></span>
   </div>
   <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">EMR→전산 반영 일치율</span><div class="kpi-ico ico-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div></div><div class="kpi-val c-warn" id="v1">—</div><div class="kpi-dl"><span id="v1-d" class="d-up"></span><span id="v1-p" class="d-n"></span></div><div class="kpi-tgt">반영 정확도 목표: 95% 이상</div></div>
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">연속형 항목 이브닝 처리율</span><div class="kpi-ico ico-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div><div class="kpi-val c-bad" id="v2">—</div><div class="kpi-dl"><span id="v2-d" class="d-dn"></span><span id="v2-p" class="d-n"></span></div><div class="kpi-tgt">이브닝 cost 처리 목표: 90% 이상</div></div>
+    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">EMR→전산 반영 일치율</span><div class="kpi-ico ico-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div></div><div class="kpi-val c-warn" id="v1">—</div><div class="kpi-dl"><span id="v1-d" class="d-up"></span><span id="v1-p" class="d-n"></span></div><div class="kpi-tgt">반영 정확도 목표: 95% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 시스템 도입 시 실측 가능</div></div>
+    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">연속형 항목 이브닝 처리율</span><div class="kpi-ico ico-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div><div class="kpi-val c-bad" id="v2">—</div><div class="kpi-dl"><span id="v2-d" class="d-dn"></span><span id="v2-p" class="d-n"></span></div><div class="kpi-tgt">이브닝 cost 처리 목표: 90% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 시스템 도입 시 실측 가능</div></div>
     <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">체크리스트 수행률</span><div class="kpi-ico ico-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg></div></div><div class="kpi-val c-ok" id="v3">—</div><div class="kpi-dl"><span id="v3-d" class="d-up"></span><span id="v3-p" class="d-n"></span></div><div class="kpi-tgt">반영 확인 체크리스트 목표: 90% 이상</div></div>
     <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">반영 지연 추정액</span><div class="kpi-ico ico-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="kpi-val" style="font-size:1.3rem" id="v4">—</div><div class="kpi-dl"><span id="v4-d" class="d-up"></span><span id="v4-p" class="d-n"></span></div><div class="kpi-tgt" id="v4-tgt"></div></div>
   </div>
