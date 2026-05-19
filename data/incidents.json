@@ -1,0 +1,9 @@
+{
+  "items": [
+    {"item":"HFNC 사용 시간","cause":"교대 마감 전 미입력","shift":"D→E","severity":"high","status":"review"},
+    {"item":"산소 Flow 변경","cause":"입력 기준 불명확","shift":"N","severity":"high","status":"review"},
+    {"item":"Ventilator 시간","cause":"인수인계 누락","shift":"E→N","severity":"medium","status":"done"},
+    {"item":"CRRT 세트 교체","cause":"신규 교육 미이수","shift":"D","severity":"medium","status":"training"},
+    {"item":"드레싱 세트","cause":"처치 후 미입력","shift":"D","severity":"low","status":"done"}
+  ]
+}

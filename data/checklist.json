@@ -1,0 +1,16 @@
+{
+  "shift": "D교대",
+  "date": "2026.05.19",
+  "completed": 7,
+  "total": 8,
+  "items": [
+    {"id":1,"text":"일회성 소모품 전산 반영 완료","done":true,"time":"07:30"},
+    {"id":2,"text":"산소/HFNC 자동계산 확인 버튼","done":false,"time":"미완료"},
+    {"id":3,"text":"인공호흡기 사용 시간 입력","done":true,"time":"07:15"},
+    {"id":4,"text":"CRRT 가동 시간 및 세트 교체","done":true,"time":"06:50"},
+    {"id":5,"text":"지속 정주 약물 실사용량 확인","done":true,"time":"07:00"},
+    {"id":6,"text":"수혈 완료·중단 입력 확인","done":true,"time":"07:10"},
+    {"id":7,"text":"드레싱 세트 청구 확인","done":true,"time":"07:05"},
+    {"id":8,"text":"미입력 항목 구두 인수인계 완료","done":true,"time":"07:20"}
+  ]
+}

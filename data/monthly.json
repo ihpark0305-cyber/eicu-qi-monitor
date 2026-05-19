@@ -1,0 +1,17 @@
+{
+  "labels": ["11월","12월","1월","2월","3월","4월","5월"],
+  "total":  [6.5, 6.1, 5.8, 5.3, 5.1, 4.9, 4.8],
+  "continuous": [10.2, 9.8, 9.1, 8.9, 8.6, 8.6, 8.2],
+  "kpi": {
+    "overall_rate": 4.8,
+    "continuous_rate": 8.2,
+    "checklist_rate": 87,
+    "omission_cost": 610000,
+    "period_label": "전월 대비",
+    "delta_overall": -1.7,
+    "delta_continuous": 0.4,
+    "delta_checklist": 12,
+    "delta_cost": -390000
+  },
+  "sub": "월별 비교 · QI 개선 전·후 (2025.11 ~ 2026.05)"
+}

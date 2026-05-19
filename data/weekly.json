@@ -1,0 +1,17 @@
+{
+  "labels": ["1주","2주","3주","4주","5주(현재)"],
+  "total":  [5.6, 5.1, 4.9, 4.6, 4.8],
+  "continuous": [9.1, 8.8, 8.5, 8.1, 8.2],
+  "kpi": {
+    "overall_rate": 4.8,
+    "continuous_rate": 8.2,
+    "checklist_rate": 91,
+    "omission_cost": 152500,
+    "period_label": "전주 대비",
+    "delta_overall": 0.2,
+    "delta_continuous": 0.1,
+    "delta_checklist": 3,
+    "delta_cost": -89000
+  },
+  "sub": "주별 이상 감지 · 5월 1주 ~ 5주"
+}
