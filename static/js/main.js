@@ -196,6 +196,171 @@ async function runCalc(){
     `<br>━━━━━━━━━━━━━━<br>합계 = <strong style="color:var(--pur)">${d.total_liters} L</strong>`;
 }
 
+/* ─── Upload ─────────────────────────────────────────────── */
+
+function showResultBadges(d) {
+  const wrap = document.getElementById('result-badges');
+  wrap.style.display = 'flex';
+
+  const bMiss = document.getElementById('badge-missing');
+  const missCount = (d.missing_items || []).length;
+  bMiss.textContent = `처방 미입력 의심 ${missCount}건`;
+  bMiss.style.display = missCount > 0 ? '' : 'none';
+
+  const bDiff = document.getElementById('badge-diff');
+  if (d.diff_count !== undefined) {
+    bDiff.textContent = `불출 vs 처방 차이 ${d.diff_count}건`;
+    bDiff.style.display = d.diff_count > 0 ? '' : 'none';
+  } else {
+    bDiff.style.display = 'none';
+  }
+
+  const bCont = document.getElementById('badge-continuous');
+  const contCount = (d.continuous_items || []).length;
+  bCont.textContent = `연속형 항목 이브닝 정산 확인 ${contCount}건`;
+  bCont.style.display = contCount > 0 ? '' : 'none';
+}
+
+function renderDelayTable(items) {
+  if (!items || items.length === 0) return;
+  const rows = items.map(i => {
+    const bg = i.highlight === 'red'    ? 'background:rgba(239,68,68,.08)' :
+               i.highlight === 'orange' ? 'background:rgba(245,158,11,.08)' :
+               i.highlight === 'yellow' ? 'background:rgba(234,179,8,.08)'  :
+               i.highlight === 'green'  ? 'background:rgba(34,197,94,.06)'  : '';
+    // 단독 분석: item/cause / 비교 분석: 그룹/차이
+    const itemName = i.item || i['그룹'] || '-';
+    const cause = i.cause ||
+      (i['차이'] !== undefined
+        ? `불출 ${i['불출_출고량']}건 / 처방 ${i['처방_실수량']}건 (차이 ${i['차이'] > 0 ? '+' : ''}${i['차이']})`
+        : '-');
+    const eveningBadge = i.highlight === 'yellow'
+      ? '<span class="tag tag-y" style="margin-left:.25rem">이브닝cost</span>' : '';
+    const statusCell = statusTag[i.status] ||
+      (i.highlight === 'green'
+        ? '<span class="tag tag-g">일치</span>'
+        : '<span class="tag tag-y">확인필요</span>');
+    return `<tr style="${bg}">
+      <td>${itemName}${eveningBadge}</td>
+      <td>${cause}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${i.shift || '업로드'}</td>
+      <td>${severityTag[i.severity] || ''}</td>
+      <td>${statusCell}</td>
+    </tr>`;
+  });
+  document.getElementById('incidents-body').innerHTML = rows.join('');
+}
+
+function renderMissingTable(items) {
+  if (!items || items.length === 0) return;
+  let sec = document.getElementById('missing-section');
+  if (!sec) {
+    sec = document.createElement('div');
+    sec.id = 'missing-section';
+    sec.className = 'card';
+    sec.style.marginTop = '1rem';
+    const anchor = document.getElementById('incidents-body').closest('.card');
+    anchor.after(sec);
+  }
+  sec.innerHTML = `
+    <div class="card-hd">
+      <div>
+        <div class="card-title">처방 미입력 의심 항목</div>
+        <div class="card-sub">처방코드 없이 실수량이 기록된 항목 — 사후 처방 확인 필요</div>
+      </div>
+    </div>
+    <table class="tbl"><thead><tr>
+      <th>항목</th><th>원인</th><th>교대</th><th>우선순위</th><th>상태</th>
+    </tr></thead><tbody>
+    ${items.map(i => `<tr style="background:rgba(234,179,8,.08)">
+      <td>${i.item || '-'}</td>
+      <td>${i.cause || '-'}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${i.shift || '업로드'}</td>
+      <td>${severityTag[i.severity] || ''}</td>
+      <td><span class="tag tag-y">처방미입력</span></td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+async function handleUpload() {
+  const file = document.getElementById('upload-ganhocheo').files[0];
+  if (!file) { alert('간호처방집계 파일을 선택해주세요.'); return; }
+  const form = new FormData();
+  form.append('file', file);
+  document.getElementById('upload-status').textContent = '⏳ 분석 중...';
+
+  const res = await fetch('/api/upload', { method: 'POST', body: form });
+  const d = await res.json();
+  if (d.error) {
+    document.getElementById('upload-status').textContent = '❌ 오류: ' + d.error;
+    return;
+  }
+
+  // KPI 갱신
+  anim(document.getElementById('v1'), d.kpi.match_rate,      800);
+  anim(document.getElementById('v2'), d.kpi.evening_rate,    800);
+  anim(document.getElementById('v3'), d.kpi.checklist_rate,  800, 'int');
+  anim(document.getElementById('v4'), d.kpi.delay_cost,      800, 'money');
+  ['v1-p','v2-p','v3-p','v4-p'].forEach(id =>
+    document.getElementById(id).textContent = d.kpi.period_label);
+
+  // match_note 표시
+  const noteEl = document.getElementById('v1-note');
+  if (noteEl && d.match_note) noteEl.textContent = d.match_note;
+
+  // 차트 갱신 (중복 방지)
+  const idx = chart.data.labels.indexOf(d.date);
+  if (idx === -1) {
+    chart.data.labels.push(d.date);
+    chart.data.datasets[0].data.push(d.kpi.match_rate);
+    chart.data.datasets[1].data.push(d.kpi.evening_rate);
+  } else {
+    chart.data.datasets[0].data[idx] = d.kpi.match_rate;
+    chart.data.datasets[1].data[idx] = d.kpi.evening_rate;
+  }
+  chart.update('active');
+
+  // 사례 테이블 갱신
+  if (d.delay_items && d.delay_items.length > 0) renderDelayTable(d.delay_items);
+  if (d.missing_items && d.missing_items.length > 0) renderMissingTable(d.missing_items);
+
+  document.getElementById('upload-status').textContent =
+    `✓ ${d.upload_type} 반영 완료 · 총 ${d.total_items}건 · ${d.date}`;
+  document.getElementById('last-updated').textContent =
+    '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
+  showResultBadges(d);
+}
+
+async function handleCompare() {
+  const f1 = document.getElementById('upload-ganhocheo').files[0];
+  const f2 = document.getElementById('upload-bulchul').files[0];
+  if (!f1 || !f2) { alert('두 파일을 모두 선택해주세요. (① 간호처방집계 + ② 불출증)'); return; }
+  const form = new FormData();
+  form.append('ganhocheo', f1);
+  form.append('bulchul', f2);
+  document.getElementById('upload-status').textContent = '⏳ 비교 분석 중...';
+
+  const res = await fetch('/api/compare', { method: 'POST', body: form });
+  const d = await res.json();
+  if (d.error) {
+    document.getElementById('upload-status').textContent = '❌ 오류: ' + d.error;
+    return;
+  }
+
+  anim(document.getElementById('v1'), d.kpi.match_rate,  800);
+  anim(document.getElementById('v4'), d.kpi.delay_cost,  800, 'money');
+  ['v1-p','v2-p','v3-p','v4-p'].forEach(id =>
+    document.getElementById(id).textContent = d.kpi.period_label);
+
+  if (d.diff_items && d.diff_items.length > 0) renderDelayTable(d.diff_items);
+
+  document.getElementById('upload-status').textContent =
+    `⇄ 비교 완료 · 차이 항목 ${d.diff_count}건 · ${d.date}`;
+  document.getElementById('last-updated').textContent =
+    '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
+  showResultBadges(d);
+}
+
 /* ─── Init ───────────────────────────────────────────────── */
 loadTrend('monthly');
 loadChecklist();

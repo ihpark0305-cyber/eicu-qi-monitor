@@ -1,7 +1,9 @@
 import os
+import pandas as pd
 from flask import Flask, render_template, jsonify, request
 from modules.flow_calculator import calculate_oxygen_charge
 from modules.data_loader import get_monthly_data, get_weekly_data, get_checklist, get_incidents
+from modules.upload_parser import parse_upload, compare_files, read_df
 
 app = Flask(__name__)
 
@@ -29,6 +31,36 @@ def flow_calc():
     data = request.get_json()
     records = data.get("records", [])
     result = calculate_oxygen_charge(records)
+    return jsonify(result)
+
+@app.route("/api/upload", methods=["POST"])
+def upload():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+    df, err = read_df(file)
+    if err:
+        return jsonify({"error": err}), 400
+    result = parse_upload(df)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+@app.route("/api/compare", methods=["POST"])
+def compare():
+    f1 = request.files.get("ganhocheo")
+    f2 = request.files.get("bulchul")
+    if not f1 or not f2:
+        return jsonify({"error": "두 파일 모두 필요합니다 (ganhocheo + bulchul)"}), 400
+    df1, e1 = read_df(f1)
+    df2, e2 = read_df(f2)
+    if e1:
+        return jsonify({"error": f"간호처방집계 오류: {e1}"}), 400
+    if e2:
+        return jsonify({"error": f"불출증 오류: {e2}"}), 400
+    result = compare_files(df1, df2)
+    if "error" in result:
+        return jsonify(result), 400
     return jsonify(result)
 
 @app.route("/analysis")

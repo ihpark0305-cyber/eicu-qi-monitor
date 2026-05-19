@@ -108,5 +108,17 @@ tbody td:first-child{font-weight:500;color:var(--txt)}
 .chk-ico.done{background:var(--ok-hl);color:var(--ok)}.chk-ico.pend{background:var(--warn-hl);color:var(--warn)}
 .chk-ico svg{width:10px;height:10px}
 .chk-txt{flex:1;font-size:var(--xs)}.chk-time{font-size:.65rem;color:var(--faint);font-family:var(--fm)}
+/* ── Upload Zone ─────────────────────────────────────────────── */
+.upload-zone{background:var(--surf);border:1.5px dashed rgba(59,130,246,.35);border-radius:var(--r-md);padding:.875rem 1.25rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.upload-label{font-size:.8rem;font-weight:600;margin-bottom:.35rem}
+.upload-sub{font-size:.7rem;color:var(--muted);margin-left:.35rem;font-weight:400}
+.upload-btn{background:var(--pri);color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.upload-btn:hover{opacity:.85}.upload-btn.ok{background:var(--ok)}
+#upload-status{font-size:.75rem;color:var(--muted);width:100%;padding-top:.25rem}
+/* ── Result Badges ───────────────────────────────────────────── */
+.result-badge{display:inline-block;padding:.3rem .7rem;border-radius:99px;font-size:.72rem;font-weight:600;cursor:default}
+.result-badge.badge-r{background:rgba(239,68,68,.15);color:#ef4444}
+.result-badge.badge-y{background:rgba(234,179,8,.15);color:#ca8a04}
+.result-badge.badge-o{background:rgba(245,158,11,.15);color:#d97706}
 @media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.charts-row,.bot-row{grid-template-columns:1fr}}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:99px}
