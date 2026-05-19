@@ -323,6 +323,7 @@ async function handleUpload() {
   // 사례 테이블 갱신
   if (d.delay_items && d.delay_items.length > 0) renderDelayTable(d.delay_items);
   if (d.missing_items && d.missing_items.length > 0) renderMissingTable(d.missing_items);
+  updateTypeChart(d);
 
   document.getElementById('upload-status').textContent =
     `✓ ${d.upload_type} 반영 완료 · 총 ${d.total_items}건 · ${d.date}`;
@@ -353,6 +354,7 @@ async function handleCompare() {
     document.getElementById(id).textContent = d.kpi.period_label);
 
   if (d.diff_items && d.diff_items.length > 0) renderDelayTable(d.diff_items);
+  updateTypeChart(d);
 
   document.getElementById('upload-status').textContent =
     `⇄ 비교 완료 · 차이 항목 ${d.diff_count}건 · ${d.date}`;
@@ -361,8 +363,155 @@ async function handleCompare() {
   showResultBadges(d);
 }
 
+/* ─── Checklist (localStorage) ───────────────────────────── */
+const CHECKLIST_ITEMS = [
+  "일회성 소모품 전산 반영 완료",
+  "산소/HFNC 입력 및 이브닝 cost 확인",
+  "인공호흡기 사용 시간 반영 확인",
+  "CRRT 가동 시간 및 세트 반영 확인",
+  "지속정주약물 사용량 반영 확인",
+  "수혈 완료/중단 반영 확인",
+  "드레싱 세트 반영 확인",
+  "미반영 항목 인수인계 확인",
+];
+const SHIFT_LABEL = "D교대";
+
+function getTodayKey() {
+  return 'checklist_' + new Date().toISOString().slice(0,10);
+}
+
+function loadChecklistLocal() {
+  const key = getTodayKey();
+  const saved = JSON.parse(localStorage.getItem(key) || 'null');
+  const state = CHECKLIST_ITEMS.map((_, i) =>
+    (saved && saved[i]) ? saved[i] : { done: false, time: '' }
+  );
+  renderChecklist(state);
+}
+
+function toggleCheck(idx) {
+  const key = getTodayKey();
+  const saved = JSON.parse(localStorage.getItem(key) || 'null');
+  const state = CHECKLIST_ITEMS.map((_, i) =>
+    (saved && saved[i]) ? saved[i] : { done: false, time: '' }
+  );
+  state[idx].done = !state[idx].done;
+  state[idx].time = state[idx].done
+    ? new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})
+    : '';
+  localStorage.setItem(key, JSON.stringify(state));
+  renderChecklist(state);
+}
+
+function renderChecklist(state) {
+  const completed = state.filter(s => s.done).length;
+  const total = CHECKLIST_ITEMS.length;
+  const today = new Date().toLocaleDateString('ko-KR',
+    {year:'numeric', month:'2-digit', day:'2-digit'});
+
+  document.getElementById('chk-meta').textContent = `${today} ${SHIFT_LABEL}`;
+  document.getElementById('chk-count').textContent = `${completed} / ${total} 완료`;
+
+  const ul = document.getElementById('chk-list');
+  ul.innerHTML = CHECKLIST_ITEMS.map((text, i) => {
+    const s = state[i];
+    return `<div class="chk" onclick="toggleCheck(${i})" style="cursor:pointer;user-select:none">
+      <div class="chk-ico ${s.done ? 'done' : 'pend'}">
+        ${s.done
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>'
+        }
+      </div>
+      <span class="chk-txt" ${s.done ? '' : 'style="color:var(--muted)"'}>${text}</span>
+      <span class="chk-time">${s.time || '미완료'}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ─── Init empty state ───────────────────────────────────── */
+function initEmptyState() {
+  // KPI 카드: 모두 "—"
+  ['v1','v2','v3','v4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+  ['v1-d','v2-d','v3-d','v4-d'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '';
+  });
+  ['v1-p','v2-p','v3-p','v4-p'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '파일 업로드 후 표시';
+  });
+
+  // 차트: 빈 상태
+  chart.data.labels = [];
+  chart.data.datasets[0].data = [];
+  chart.data.datasets[1].data = [];
+  chart.update();
+  const sub = document.getElementById('chart-sub');
+  if (sub) sub.textContent = '간호처방집계 또는 불출증 파일을 업로드하면 차트가 표시됩니다.';
+
+  // 사례 테이블: 안내
+  const tbody = document.getElementById('incidents-body');
+  if (tbody) tbody.innerHTML =
+    `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem;font-size:.8rem">
+      ▲ 파일을 업로드하면 반영 지연·불일치 사례가 여기에 표시됩니다.
+    </td></tr>`;
+
+  // 알림: 업로드 유도
+  const alertBox = document.getElementById('alert-box');
+  const alertTxt = document.getElementById('alert-text');
+  if (alertBox && alertTxt) {
+    alertBox.style.display = 'flex';
+    alertTxt.innerHTML = '상단의 <strong>간호처방집계 또는 불출증 파일을 업로드</strong>하면 오늘 교대의 반영 현황이 표시됩니다.';
+  }
+
+  // 처치 유형별 진행바: 안내
+  const panelDelay = document.getElementById('panel-delay');
+  if (panelDelay) panelDelay.innerHTML =
+    `<div style="color:var(--muted);font-size:.8rem;padding:1rem;text-align:center">
+      파일 업로드 후 처치 유형별 지연 현황이 표시됩니다.
+    </div>`;
+}
+
+/* ─── 처치 유형별 진행바 동적 갱신 ───────────────────────── */
+function updateTypeChart(d) {
+  const panel = document.getElementById('panel-delay');
+  if (!panel) return;
+  const items = [...(d.delay_items || []), ...(d.missing_items || [])];
+  if (items.length === 0) {
+    panel.innerHTML = `<div style="color:var(--ok);font-size:.8rem;padding:.75rem;font-weight:600">✓ 반영 지연 항목 없음</div>`;
+    return;
+  }
+  const total = d.total_items || 1;
+  const groups = {};
+  items.forEach(item => {
+    const g = item['그룹'] || (item.item
+      ? (item.item.match(/산소|O2|HFNC|고유량/i) ? '산소' :
+         item.item.match(/인공호흡|ventilator/i) ? '인공호흡기' :
+         item.item.match(/CRRT|신대체/i) ? 'CRRT' :
+         item.item.match(/드레싱|OPSITE|BETAFOAM|Allevyn|TEGADERM/i) ? '드레싱' :
+         item.item.match(/catheter|카테터|INSYTE/i) ? '카테터' :
+         item.item.match(/suction|흡인/i) ? '흡인' : '기타')
+      : '기타');
+    groups[g] = (groups[g] || 0) + 1;
+  });
+  panel.innerHTML = Object.entries(groups).map(([g, cnt]) => {
+    const pct = Math.round(cnt / total * 100);
+    const barW = Math.min(pct * 8, 100);
+    const color = pct >= 10 ? 'var(--err)' : pct >= 5 ? 'var(--warn)' : 'var(--ok)';
+    return `<div class="prog-item">
+      <div class="prog-row">
+        <span class="prog-lbl">${g}</span>
+        <span class="prog-val" style="color:${color}">${pct}% <span style="color:var(--faint);font-size:.65rem">(${cnt}건)</span></span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${barW}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
 /* ─── Init ───────────────────────────────────────────────── */
-loadTrend('monthly');
-loadChecklist();
-loadIncidents();
+initEmptyState();
+loadChecklistLocal();
 renderFlowTable();
