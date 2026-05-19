@@ -1,9 +1,9 @@
 {
   "items": [
-    {"item":"HFNC 사용 시간","cause":"교대 마감 전 미입력","shift":"D→E","severity":"high","status":"review"},
-    {"item":"산소 Flow 변경","cause":"입력 기준 불명확","shift":"N","severity":"high","status":"review"},
-    {"item":"Ventilator 시간","cause":"인수인계 누락","shift":"E→N","severity":"medium","status":"done"},
-    {"item":"CRRT 세트 교체","cause":"신규 교육 미이수","shift":"D","severity":"medium","status":"training"},
-    {"item":"드레싱 세트","cause":"처치 후 미입력","shift":"D","severity":"low","status":"done"}
+    {"item":"HFNC 반영 지연","cause":"연속형 항목 이브닝 정산 미확인","shift":"D→E","severity":"high","status":"review"},
+    {"item":"산소 이브닝 정산 미확인","cause":"교대별 반영 확인 기준 불명확","shift":"N","severity":"high","status":"review"},
+    {"item":"인공호흡기 반영 불일치","cause":"미반영 항목 인수인계 미시행","shift":"E→N","severity":"medium","status":"done"},
+    {"item":"CRRT 반영 지연","cause":"전산 반영 시점 지연","shift":"D","severity":"medium","status":"training"},
+    {"item":"드레싱 전산 반영 누락","cause":"재고 수량과 청구 수량 차이 가능성","shift":"D","severity":"low","status":"done"}
   ]
 }

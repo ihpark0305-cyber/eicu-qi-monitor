@@ -21,13 +21,13 @@ const targetLine={id:'tl',afterDraw(c){
   cx.strokeStyle=isDark()?'rgba(245,158,11,0.5)':'rgba(217,119,6,0.5)';
   cx.lineWidth=1.5;cx.beginPath();cx.moveTo(left,yv);cx.lineTo(right,yv);cx.stroke();
   cx.font="10px 'Noto Sans KR'";cx.fillStyle=isDark()?'rgba(245,158,11,0.7)':'#d97706';
-  cx.fillText('목표 5%',right-44,yv-5);cx.restore();
+  cx.fillText('반영 정확도 목표',right-72,yv-5);cx.restore();
 }};
 const chart=new Chart(ctx,{
   type:'line',
   data:{labels:[],datasets:[
-    {label:'전체 누락률',data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.08)',tension:0.4,fill:true,pointBackgroundColor:'#3b82f6',pointRadius:4,borderWidth:2},
-    {label:'연속사용 처치',data:[],borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.04)',tension:0.4,fill:false,pointBackgroundColor:'#ef4444',pointRadius:4,borderWidth:2,borderDash:[4,3]}
+    {label:'전체 반영 불일치율',data:[],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.08)',tension:0.4,fill:true,pointBackgroundColor:'#3b82f6',pointRadius:4,borderWidth:2},
+    {label:'연속형 항목 지연율',data:[],borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.04)',tension:0.4,fill:false,pointBackgroundColor:'#ef4444',pointRadius:4,borderWidth:2,borderDash:[4,3]}
   ]},
   options:{
     responsive:true,maintainAspectRatio:false,
@@ -69,29 +69,30 @@ async function loadTrend(period){
   chart.update('active');
   document.getElementById('chart-sub').textContent=d.sub;
   const k=d.kpi;
-  anim(document.getElementById('v1'),k.overall_rate,800);
-  anim(document.getElementById('v2'),k.continuous_rate,800);
+  anim(document.getElementById('v1'),k.match_rate,800);
+  anim(document.getElementById('v2'),k.evening_rate,800);
   anim(document.getElementById('v3'),k.checklist_rate,800,'int');
-  anim(document.getElementById('v4'),k.omission_cost,800,'money');
+  anim(document.getElementById('v4'),k.delay_cost,800,'money');
   const pLabel=k.period_label;
   ['v1-p','v2-p','v3-p','v4-p'].forEach(id=>document.getElementById(id).textContent=pLabel);
-  document.getElementById('v1-d').textContent=(k.delta_overall>0?'↑ +':'↓ ')+Math.abs(k.delta_overall)+'%p';
-  document.getElementById('v1-d').className=k.delta_overall>0?'d-dn':'d-up';
-  document.getElementById('v2-d').textContent=(k.delta_continuous>0?'↑ +':'↓ ')+Math.abs(k.delta_continuous)+'%p';
-  document.getElementById('v2-d').className=k.delta_continuous>0?'d-dn':'d-up';
+  document.getElementById('v1-d').textContent=(k.delta_match>0?'↑ +':'↓ ')+Math.abs(k.delta_match)+'%p';
+  document.getElementById('v1-d').className=k.delta_match>0?'d-dn':'d-up';
+  document.getElementById('v2-d').textContent=(k.delta_evening>0?'↑ +':'↓ ')+Math.abs(k.delta_evening)+'%p';
+  document.getElementById('v2-d').className=k.delta_evening>0?'d-dn':'d-up';
   document.getElementById('v3-d').textContent=(k.delta_checklist>0?'↑ +':'↓ ')+Math.abs(k.delta_checklist)+'%p';
-  document.getElementById('v4-d').textContent=(k.delta_cost>0?'↑ +₩':'↓ ₩')+Math.abs(k.delta_cost).toLocaleString();
-  document.getElementById('v4-d').className=k.delta_cost<0?'d-up':'d-dn';
-  document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 누락 추정액':'개선 전 대비 39% 절감';
+  document.getElementById('v4-d').textContent=(k.delta_delay_cost>0?'↑ +₩':'↓ ₩')+Math.abs(k.delta_delay_cost).toLocaleString();
+  document.getElementById('v4-d').className=k.delta_delay_cost<0?'d-up':'d-dn';
+  document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 반영 지연 추정액':'입력-청구 반영 차이 추정액';
 
-  const rate=k.continuous_rate;
+  // 연속형 항목 지연율이 높으면 항상 안내 알림 표시
   const alertBox=document.getElementById('alert-box');
   const alertTxt=document.getElementById('alert-text');
-  if(rate>5){
+  if(k.evening_rate>5){
     alertBox.style.display='flex';
-    alertTxt.innerHTML=`<strong>연속사용 처치 누락률 ${rate}%</strong> — 목표치(5%) 초과. 자동계산 시스템 도입 건의 필요.`;
+    alertTxt.innerHTML=`연속형 항목(산소·HFNC·인공호흡기)은 EMR 입력과 실제 전산 반영이 분리될 수 있어, <strong>이브닝 정산 확인이 필요합니다.</strong>`;
   } else {
-    alertBox.style.display='none';
+    alertBox.style.display='flex';
+    alertTxt.innerHTML='EMR 입력이 곧바로 청구 완료를 의미하지 않으므로, <strong>입력-반영 매칭 확인</strong>이 필요합니다.';
   }
 }
 
@@ -170,7 +171,7 @@ function renderFlowTable(){
     <div class="flow-row" style="${i===DEMO_RECORDS.length-1?'opacity:.4':''}">
       <span class="flow-time">${r.time}</span>
       <div class="flow-bar-cell">
-        ${r.flow!=null?`<div class="flow-bar" style="width:${widths[r.flow]||30}%;background:${colors[r.flow]||'var(--muted)'}"></div>`:'<span style="font-size:.65rem;color:var(--faint)">← 교대 마감</span>'}
+        ${r.flow!=null?`<div class="flow-bar" style="width:${widths[r.flow]||30}%;background:${colors[r.flow]||'var(--muted)'}"></div>`:'<span style="font-size:.65rem;color:var(--faint)">← 이브닝 정산 시점</span>'}
       </div>
       <span class="flow-val" style="color:${r.flow!=null?colors[r.flow]:'var(--faint)'}">
         ${r.flow!=null?r.flow+' L':'-'}
