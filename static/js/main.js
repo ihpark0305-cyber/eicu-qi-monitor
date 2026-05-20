@@ -591,9 +591,9 @@ async function handleImageUpload() {
     const res = await fetch('/api/ocr-upload', { method: 'POST', body: form });
     const d   = await res.json();
 
-    if (d.error && !d.manual_mode) {
+    if (d.error) {
       st.textContent = '❌ ' + d.error;
-      return;
+      if (!d.manual_mode) return;
     }
     window._currentMeta = {
       date, doctype, duty,
@@ -601,7 +601,7 @@ async function handleImageUpload() {
     };
     if (d.manual_mode) {
       renderOcrTable([], true);
-      st.textContent = '✏️ 수동 입력 모드 — 직접 입력 후 확정해주세요.';
+      if (!d.error) st.textContent = '✏️ 수동 입력 모드 — 직접 입력 후 확정해주세요.';
     } else {
       renderOcrTable(d.items || [], false);
       st.textContent = `✓ ${d.count}개 항목 추출 완료 — 수정 후 "분석 확정" 클릭`;

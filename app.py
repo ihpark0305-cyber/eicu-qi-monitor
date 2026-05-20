@@ -64,6 +64,26 @@ def compare():
         return jsonify(result), 400
     return jsonify(result)
 
+@app.route("/api/test-gemini")
+def test_gemini():
+    import os, requests as req
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        return jsonify({"status": "error", "msg": "GEMINI_API_KEY 없음"})
+    try:
+        res = req.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+            params={"key": key},
+            json={"contents": [{"parts": [{"text": "안녕"}]}]},
+            timeout=10
+        )
+        d = res.json()
+        if "error" in d:
+            return jsonify({"status": "error", "msg": d["error"].get("message","unknown")})
+        return jsonify({"status": "ok", "reply": d["candidates"][0]["content"]["parts"][0]["text"]})
+    except Exception as e:
+        return jsonify({"status": "error", "msg": str(e)})
+
 @app.route("/api/ocr-upload", methods=["POST"])
 def ocr_upload():
     file = request.files.get("file")
