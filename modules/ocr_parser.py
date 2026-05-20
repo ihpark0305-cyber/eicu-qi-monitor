@@ -1,4 +1,4 @@
-import os, base64, json, re
+import os, json, re
 import google.generativeai as genai
 
 PROMPT = """이 이미지는 병원 불출증 또는 간호처방집계입니다.
@@ -8,7 +8,7 @@ PROMPT = """이 이미지는 병원 불출증 또는 간호처방집계입니다
 [
   {
     "item": "품목명 또는 처방명",
-    "code": "처방코드(있으면)",
+    "code": "처방코드(있으면, 없으면 빈 문자열)",
     "unit": "단위",
     "order_qty": 청구수량 또는 처방수량(숫자 또는 null),
     "delivered_qty": 출고량(숫자 또는 null),
@@ -46,12 +46,8 @@ def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
 
-        image_part = {
-            "inline_data": {
-                "mime_type": mime_type,
-                "data": base64.b64encode(file_bytes).decode("utf-8"),
-            }
-        }
+        # 이미지를 dict 형식으로 전달 (raw bytes)
+        image_part = {"mime_type": mime_type, "data": file_bytes}
 
         response = model.generate_content([PROMPT, image_part])
         raw = response.text.strip()
@@ -59,12 +55,12 @@ def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
         # JSON 배열 추출
         match = re.search(r'\[.*\]', raw, re.DOTALL)
         if not match:
-            return {"error": "JSON 배열 추출 실패 — 수동 입력 모드를 사용하세요", "manual_mode": True}
+            return {"error": f"JSON 추출 실패: {raw[:200]}", "manual_mode": True}
 
         items = json.loads(match.group())
         return {"items": items, "count": len(items)}
 
-    except json.JSONDecodeError:
-        return {"error": "JSON 파싱 실패 — 수동 입력 모드를 사용하세요", "manual_mode": True}
+    except json.JSONDecodeError as e:
+        return {"error": f"JSON 파싱 오류: {str(e)}", "manual_mode": True}
     except Exception as e:
-        return {"error": str(e), "manual_mode": True}
+        return {"error": f"Gemini 오류: {str(e)}", "manual_mode": True}
