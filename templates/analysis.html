@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>처치 유형별 분석 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/style.css">
@@ -17,48 +18,50 @@
       <span>EICU QI Monitor</span>
     </div>
     <span class="badge">중앙대병원 EICU · 13병상</span>
-    <span class="badge-pur">Flask v2.0</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
-    <button class="theme-btn" data-theme-toggle>
+    <button class="theme-btn" data-theme-toggle title="테마 변경">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
   </div>
 </header>
 <nav class="sidebar">
   <div class="nav-sec">모니터링</div>
-  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>수가 누락 현황</a>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
   <a class="nav-item active" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
   <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
-  <div class="nav-sec">자동계산</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>연속처치 자동계산<span class="badge-pur" style="margin-left:auto;font-size:.6rem">NEW</span></div>
   <div class="nav-sec">관리</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>체크리스트</div>
   <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
 </nav>
 <main class="main">
   <div class="pg-header">
     <div>
       <div class="pg-title">처치 유형별 분석</div>
-      <div class="pg-sub">처치 항목별 수가 누락 현황 및 월별 추이 분석</div>
+      <div class="pg-sub" id="analysis-sub">업로드 데이터 기준 · 대시보드에서 파일 업로드 후 집계됩니다</div>
     </div>
-    <span class="badge" style="align-self:center">2025년 4월 기준</span>
+    <button class="btn btn-ghost" onclick="buildAnalysis()" style="font-size:.75rem">새로고침</button>
   </div>
 
-  <!-- 가로 바차트 -->
+  <!-- 처치 항목별 누락/과다 건수 바차트 -->
   <div class="card">
     <div class="card-hd">
-      <div><div class="card-title">처치 항목별 누락률</div><div class="card-sub">이번 달 기준 · 목표 5% 미만</div></div>
+      <div><div class="card-title">처치 항목별 과다 출고 건수</div><div class="card-sub">불출증 vs 처방집계 비교 기반 · 업로드 데이터 집계</div></div>
     </div>
-    <div style="position:relative;height:240px"><canvas id="barChart"></canvas></div>
+    <div id="bar-empty" style="display:none;padding:2.5rem;text-align:center;color:var(--muted);font-size:.85rem">
+      대시보드에서 파일을 업로드하면<br>처치 유형별 분석이 여기에 표시됩니다.
+    </div>
+    <div style="position:relative;height:240px" id="bar-wrap"><canvas id="barChart"></canvas></div>
   </div>
 
-  <!-- 월별 추이 라인차트 -->
+  <!-- 월별 업로드 현황 라인차트 -->
   <div class="card">
     <div class="card-hd">
-      <div><div class="card-title">월별 처치 유형 누락률 추이</div><div class="card-sub">2025년 1월 ~ 4월</div></div>
+      <div><div class="card-title">월별 업로드 / 과다 건수 추이</div><div class="card-sub">daily_summary 기반 · 실 업로드 날짜 기준</div></div>
     </div>
-    <div style="position:relative;height:240px"><canvas id="lineChart"></canvas></div>
+    <div id="line-empty" style="display:none;padding:2.5rem;text-align:center;color:var(--muted);font-size:.85rem">
+      업로드 기록이 쌓이면 월별 추이가 표시됩니다.
+    </div>
+    <div style="position:relative;height:240px" id="line-wrap"><canvas id="lineChart"></canvas></div>
   </div>
 
   <!-- 상세 테이블 -->
@@ -69,62 +72,14 @@
         <thead>
           <tr>
             <th>처치 항목</th>
-            <th>누락 건수</th>
-            <th>전체 건수</th>
-            <th>누락률</th>
-            <th>전월 대비</th>
+            <th>과다 건수</th>
+            <th>전체 비교 건수</th>
+            <th>과다율</th>
             <th>상태</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>산소요법 · HFNC</td>
-            <td style="font-family:var(--fm)">41</td>
-            <td style="font-family:var(--fm)">500</td>
-            <td style="font-family:var(--fm);color:var(--err)">8.2%</td>
-            <td><span class="d-dn">▲ 0.8%p</span></td>
-            <td><span class="tag tag-r">위험</span></td>
-          </tr>
-          <tr>
-            <td>인공호흡기</td>
-            <td style="font-family:var(--fm)">26</td>
-            <td style="font-family:var(--fm)">426</td>
-            <td style="font-family:var(--fm);color:var(--warn)">6.1%</td>
-            <td><span class="d-up">▼ 0.4%p</span></td>
-            <td><span class="tag tag-y">주의</span></td>
-          </tr>
-          <tr>
-            <td>CRRT</td>
-            <td style="font-family:var(--fm)">19</td>
-            <td style="font-family:var(--fm)">352</td>
-            <td style="font-family:var(--fm);color:var(--warn)">5.4%</td>
-            <td><span class="d-up">▼ 0.2%p</span></td>
-            <td><span class="tag tag-y">주의</span></td>
-          </tr>
-          <tr>
-            <td>지속 정주 약물</td>
-            <td style="font-family:var(--fm)">29</td>
-            <td style="font-family:var(--fm)">763</td>
-            <td style="font-family:var(--fm);color:var(--ok)">3.8%</td>
-            <td><span class="d-up">▼ 1.1%p</span></td>
-            <td><span class="tag tag-g">양호</span></td>
-          </tr>
-          <tr>
-            <td>드레싱 · 소모품</td>
-            <td style="font-family:var(--fm)">11</td>
-            <td style="font-family:var(--fm)">524</td>
-            <td style="font-family:var(--fm);color:var(--ok)">2.1%</td>
-            <td><span class="d-up">▼ 0.5%p</span></td>
-            <td><span class="tag tag-g">양호</span></td>
-          </tr>
-          <tr>
-            <td>수혈 · 혈액제제</td>
-            <td style="font-family:var(--fm)">4</td>
-            <td style="font-family:var(--fm)">286</td>
-            <td style="font-family:var(--fm);color:var(--ok)">1.4%</td>
-            <td><span class="d-up">▼ 0.3%p</span></td>
-            <td><span class="tag tag-g">양호</span></td>
-          </tr>
+        <tbody id="analysis-tbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">업로드 후 집계됩니다</td></tr>
         </tbody>
       </table>
     </div>
@@ -132,81 +87,198 @@
 </main>
 </div>
 <script>
-// 다크모드 토글
+// 테마 토글
 document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
-  const html = document.documentElement;
-  html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+  const h = document.documentElement;
+  const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  h.dataset.theme = next;
+  localStorage.setItem('eicu_theme', next);
+  rebuildCharts();
 });
 
-const getCSS = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const gc = () => document.documentElement.dataset.theme === 'dark'
+  ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+const tc = () => document.documentElement.dataset.theme === 'dark'
+  ? '#8892a4' : '#64748b';
 
-const labels = ['산소요법·HFNC', '인공호흡기', 'CRRT', '지속정주약물', '드레싱·소모품', '수혈·혈액제제'];
-const vals = [8.2, 6.1, 5.4, 3.8, 2.1, 1.4];
+// 처치 유형 키워드 분류
+const TYPE_KW = {
+  '산소요법·HFNC':  ['산소','hfnc','고유량','nasal','cannula'],
+  '인공호흡기':     ['인공호흡','vent','기계호흡','ventilator'],
+  'CRRT':           ['crrt','신대체','혈액투석','crrt'],
+  '지속정주약물':   ['주사','정주','infusion','syringe','pump','지속'],
+  '드레싱·소모품':  ['드레싱','dressing','gauze','거즈','소모품','foley','foley catheter'],
+  '수혈·혈액제제':  ['수혈','혈액','blood','rbc','plt','ffp','pc','albumin'],
+};
+const TYPE_LABELS = Object.keys(TYPE_KW);
 
-const colors = vals.map(v => v >= 7 ? '#ef4444' : v >= 5 ? '#f59e0b' : '#10b981');
+function classifyItem(name) {
+  if (!name) return '기타';
+  const n = name.toLowerCase();
+  for (const [type, kws] of Object.entries(TYPE_KW))
+    if (kws.some(k => n.includes(k))) return type;
+  return '기타';
+}
 
-// 가로 바차트
-const barCtx = document.getElementById('barChart').getContext('2d');
-new Chart(barCtx, {
-  type: 'bar',
-  data: {
-    labels,
-    datasets: [{
-      label: '누락률 (%)',
-      data: vals,
-      backgroundColor: colors,
-      borderRadius: 6,
-      borderSkipped: false,
-    }]
-  },
-  options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x}%` } }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(255,255,255,0.06)' },
-        ticks: { color: '#8892a4', callback: v => v + '%' },
-        max: 12,
+// localStorage에서 모든 업로드 기록 읽기
+function readAllUploads() {
+  const records = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('upload_')) continue;
+    try {
+      const val = JSON.parse(localStorage.getItem(key));
+      if (val && val.items) {
+        const parts = key.split('_'); // upload_DATE_DOCTYPE_DUTY
+        records.push({ date: parts[1], doctype: parts[2], duty: parts[3], items: val.items });
+      }
+    } catch(e) {}
+  }
+  return records;
+}
+
+// 월별 daily_summary 집계
+function readMonthlySummary() {
+  const monthly = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('daily_summary_')) continue;
+    try {
+      const val = JSON.parse(localStorage.getItem(key));
+      const date = key.replace('daily_summary_', '');
+      const month = date.slice(0, 7); // YYYY-MM
+      if (!monthly[month]) monthly[month] = { uploads: 0, overstock: 0 };
+      monthly[month].uploads += (val.uploads || 0);
+      monthly[month].overstock += (val.overstock || 0);
+    } catch(e) {}
+  }
+  return monthly;
+}
+
+let barChart = null, lineChart = null;
+
+function buildAnalysis() {
+  const uploads = readAllUploads();
+
+  // 유형별 집계
+  const typeCounts = {};
+  TYPE_LABELS.forEach(t => { typeCounts[t] = { over: 0, total: 0 }; });
+  typeCounts['기타'] = { over: 0, total: 0 };
+
+  uploads.forEach(rec => {
+    (rec.items || []).forEach(item => {
+      const t = classifyItem(item.name || item.item || '');
+      if (!typeCounts[t]) typeCounts[t] = { over: 0, total: 0 };
+      typeCounts[t].total++;
+      if ((item.diff !== undefined && item.diff > 0) || item.overstock) {
+        typeCounts[t].over++;
+      }
+    });
+  });
+
+  const hasData = uploads.length > 0;
+
+  // 바차트
+  const barEmpty = document.getElementById('bar-empty');
+  const barWrap  = document.getElementById('bar-wrap');
+  if (!hasData) {
+    barEmpty.style.display = 'block';
+    barWrap.style.display  = 'none';
+  } else {
+    barEmpty.style.display = 'none';
+    barWrap.style.display  = 'block';
+    const vals = TYPE_LABELS.map(t => typeCounts[t]?.over || 0);
+    const colors = vals.map(v => v >= 10 ? '#ef4444' : v >= 5 ? '#f59e0b' : '#10b981');
+    if (barChart) barChart.destroy();
+    barChart = new Chart(document.getElementById('barChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: TYPE_LABELS,
+        datasets: [{ label: '과다 출고 건수', data: vals, backgroundColor: colors, borderRadius: 6, borderSkipped: false }]
       },
-      y: { grid: { display: false }, ticks: { color: '#8892a4' } }
-    }
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.x}건` } } },
+        scales: {
+          x: { grid: { color: gc() }, ticks: { color: tc(), stepSize: 1 } },
+          y: { grid: { display: false }, ticks: { color: tc() } }
+        }
+      }
+    });
   }
-});
 
-// 월별 추이 라인차트
-const months = ['1월', '2월', '3월', '4월'];
-const lineCtx = document.getElementById('lineChart').getContext('2d');
-new Chart(lineCtx, {
-  type: 'line',
-  data: {
-    labels: months,
-    datasets: [
-      { label: '산소요법·HFNC', data: [10.1, 9.5, 7.4, 8.2], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.4, fill: false },
-      { label: '인공호흡기',     data: [7.8, 7.0, 6.5, 6.1],  borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.4, fill: false },
-      { label: 'CRRT',           data: [6.2, 5.9, 5.6, 5.4],  borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.1)', tension: 0.4, fill: false },
-      { label: '지속정주약물',   data: [5.5, 5.0, 4.9, 3.8],  borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.1)', tension: 0.4, fill: false },
-      { label: '드레싱·소모품', data: [3.0, 2.8, 2.6, 2.1],  borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: false },
-      { label: '수혈·혈액제제', data: [2.1, 1.9, 1.7, 1.4],  borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: false },
-    ]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { labels: { color: '#8892a4', boxWidth: 12, font: { size: 11 } } },
-      tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } }
-    },
-    scales: {
-      x: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#8892a4' } },
-      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#8892a4', callback: v => v + '%' } }
-    }
+  // 라인차트 (월별 업로드/과다 추이)
+  const monthly = readMonthlySummary();
+  const lineEmpty = document.getElementById('line-empty');
+  const lineWrap  = document.getElementById('line-wrap');
+  const months = Object.keys(monthly).sort();
+  if (months.length === 0) {
+    lineEmpty.style.display = 'block';
+    lineWrap.style.display  = 'none';
+  } else {
+    lineEmpty.style.display = 'none';
+    lineWrap.style.display  = 'block';
+    const uploadVals  = months.map(m => monthly[m].uploads);
+    const overstockVals = months.map(m => monthly[m].overstock);
+    if (lineChart) lineChart.destroy();
+    lineChart = new Chart(document.getElementById('lineChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: months.map(m => m.replace('-', '년 ') + '월'),
+        datasets: [
+          { label: '총 업로드', data: uploadVals, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 4 },
+          { label: '과다 출고 건수', data: overstockVals, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', tension: 0.4, fill: false, pointRadius: 4 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: tc(), boxWidth: 12, font: { size: 11 } } } },
+        scales: {
+          x: { grid: { color: gc() }, ticks: { color: tc() } },
+          y: { grid: { color: gc() }, ticks: { color: tc(), stepSize: 1 } }
+        }
+      }
+    });
   }
-});
+
+  // 상세 테이블
+  const tbody = document.getElementById('analysis-tbody');
+  if (!hasData) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:1.5rem">업로드 후 집계됩니다</td></tr>';
+  } else {
+    tbody.innerHTML = TYPE_LABELS.map(t => {
+      const d = typeCounts[t] || { over: 0, total: 0 };
+      const rate = d.total > 0 ? (d.over / d.total * 100).toFixed(1) : '—';
+      const rateNum = parseFloat(rate);
+      const color = isNaN(rateNum) ? 'var(--muted)' : rateNum >= 10 ? 'var(--err)' : rateNum >= 5 ? 'var(--warn)' : 'var(--ok)';
+      const tag = isNaN(rateNum) ? '<span class="tag tag-b">데이터 없음</span>'
+        : rateNum >= 10 ? '<span class="tag tag-r">위험</span>'
+        : rateNum >= 5  ? '<span class="tag tag-y">주의</span>'
+        : '<span class="tag tag-g">양호</span>';
+      return `<tr>
+        <td>${t}</td>
+        <td style="font-family:var(--fm)">${d.over}</td>
+        <td style="font-family:var(--fm)">${d.total}</td>
+        <td style="font-family:var(--fm);color:${color}">${isNaN(rateNum) ? '—' : rate + '%'}</td>
+        <td>${tag}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // 날짜 레이블 업데이트
+  if (hasData) {
+    const latest = uploads.map(u => u.date).sort().pop();
+    document.getElementById('analysis-sub').textContent = `업로드 데이터 기준 · 최근 업로드: ${latest || '—'}`;
+  }
+}
+
+function rebuildCharts() {
+  if (barChart) { barChart.destroy(); barChart = null; }
+  if (lineChart) { lineChart.destroy(); lineChart = null; }
+  buildAnalysis();
+}
+
+buildAnalysis();
 </script>
 </body>
 </html>

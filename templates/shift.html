@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>교대별 입력률 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/style.css">
@@ -36,46 +37,50 @@
       <span>EICU QI Monitor</span>
     </div>
     <span class="badge">중앙대병원 EICU · 13병상</span>
-    <span class="badge-pur">Flask v2.0</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
-    <button class="theme-btn" data-theme-toggle>
+    <button class="theme-btn" data-theme-toggle title="테마 변경">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
   </div>
 </header>
 <nav class="sidebar">
   <div class="nav-sec">모니터링</div>
-  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>수가 누락 현황</a>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
   <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
   <a class="nav-item active" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
-  <div class="nav-sec">자동계산</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>연속처치 자동계산<span class="badge-pur" style="margin-left:auto;font-size:.6rem">NEW</span></div>
   <div class="nav-sec">관리</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>체크리스트</div>
   <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
 </nav>
 <main class="main">
   <div class="pg-header">
     <div>
       <div class="pg-title">교대별 입력률</div>
-      <div class="pg-sub">D·E·N 교대별 수가 누락률 비교 및 요일별 패턴 분석</div>
+      <div class="pg-sub">D·E·N 교대별 업로드 현황 및 요일별 패턴 · 실 업로드 데이터 기반</div>
     </div>
-    <span class="badge" style="align-self:center">2025년 4월 기준</span>
+    <button class="btn btn-ghost" onclick="buildShift()" style="font-size:.75rem">새로고침</button>
+  </div>
+
+  <!-- 데이터 없음 안내 -->
+  <div id="shift-empty" style="display:none" class="card">
+    <div style="padding:2.5rem;text-align:center;color:var(--muted);font-size:.85rem;line-height:2">
+      대시보드에서 파일을 업로드하면<br>교대별 입력 현황이 여기에 표시됩니다.<br>
+      <span style="font-size:.75rem;color:var(--faint)">이미지 업로드 시 교대(D/E/N) 선택 필수</span>
+    </div>
   </div>
 
   <!-- 교대별 바차트 -->
-  <div class="card">
+  <div class="card" id="shift-bar-card">
     <div class="card-hd">
-      <div><div class="card-title">교대별 누락률 비교</div><div class="card-sub">D(07–15시) · E(15–23시) · N(23–07시)</div></div>
+      <div><div class="card-title">교대별 업로드 건수</div><div class="card-sub">D(07–15시) · E(15–23시) · N(23–07시)</div></div>
     </div>
     <div style="position:relative;height:220px"><canvas id="shiftBar"></canvas></div>
   </div>
 
   <!-- 히트맵 -->
-  <div class="card">
+  <div class="card" id="shift-heatmap-card">
     <div class="card-hd">
-      <div><div class="card-title">요일 × 교대 누락률 히트맵</div><div class="card-sub">색상이 진할수록 누락률 높음</div></div>
+      <div><div class="card-title">요일 × 교대 업로드 현황 (히트맵)</div><div class="card-sub">색상이 진할수록 업로드 건수 많음</div></div>
     </div>
     <div class="heatmap-wrap">
       <div class="heatmap" id="heatmap"></div>
@@ -83,86 +88,157 @@
   </div>
 
   <!-- Top3 카드 -->
-  <div class="top3-grid">
+  <div class="top3-grid" id="top3-grid">
     <div class="top3-card">
       <div class="top3-badge d">D교대 (07–15시)</div>
-      <div class="top3-item"><span class="top3-rank">1</span><span class="top3-name">산소요법 · HFNC</span><span class="top3-val" style="color:var(--err)">9.1%</span></div>
-      <div class="top3-item"><span class="top3-rank">2</span><span class="top3-name">인공호흡기</span><span class="top3-val" style="color:var(--warn)">6.8%</span></div>
-      <div class="top3-item"><span class="top3-rank">3</span><span class="top3-name">CRRT</span><span class="top3-val" style="color:var(--warn)">5.2%</span></div>
+      <div id="top3-d"></div>
     </div>
     <div class="top3-card">
       <div class="top3-badge e">E교대 (15–23시)</div>
-      <div class="top3-item"><span class="top3-rank">1</span><span class="top3-name">인공호흡기</span><span class="top3-val" style="color:var(--warn)">7.3%</span></div>
-      <div class="top3-item"><span class="top3-rank">2</span><span class="top3-name">산소요법 · HFNC</span><span class="top3-val" style="color:var(--warn)">6.4%</span></div>
-      <div class="top3-item"><span class="top3-rank">3</span><span class="top3-name">지속 정주 약물</span><span class="top3-val" style="color:var(--ok)">4.1%</span></div>
+      <div id="top3-e"></div>
     </div>
     <div class="top3-card">
       <div class="top3-badge n">N교대 (23–07시)</div>
-      <div class="top3-item"><span class="top3-rank">1</span><span class="top3-name">산소요법 · HFNC</span><span class="top3-val" style="color:var(--err)">10.8%</span></div>
-      <div class="top3-item"><span class="top3-rank">2</span><span class="top3-name">CRRT</span><span class="top3-val" style="color:var(--err)">8.1%</span></div>
-      <div class="top3-item"><span class="top3-rank">3</span><span class="top3-name">인공호흡기</span><span class="top3-val" style="color:var(--warn)">7.9%</span></div>
+      <div id="top3-n"></div>
     </div>
   </div>
 </main>
 </div>
 <script>
+// 테마 토글
 document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
   const h = document.documentElement;
-  h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  h.dataset.theme = next;
+  localStorage.setItem('eicu_theme', next);
+  if (shiftBarChart) { shiftBarChart.destroy(); shiftBarChart = null; }
+  buildShift();
 });
 
-// 교대별 바차트
-const shiftCtx = document.getElementById('shiftBar').getContext('2d');
-new Chart(shiftCtx, {
-  type: 'bar',
-  data: {
-    labels: ['전체 누락률', '산소요법·HFNC', '인공호흡기', 'CRRT', '지속정주약물', '드레싱·소모품', '수혈·혈액제제'],
-    datasets: [
-      { label: 'D교대', data: [5.8, 9.1, 6.8, 5.2, 3.9, 2.3, 1.5], backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 4 },
-      { label: 'E교대', data: [5.4, 6.4, 7.3, 4.8, 4.1, 2.0, 1.2], backgroundColor: 'rgba(167,139,250,0.75)', borderRadius: 4 },
-      { label: 'N교대', data: [8.2, 10.8, 7.9, 8.1, 3.2, 2.1, 1.6], backgroundColor: 'rgba(20,184,166,0.75)', borderRadius: 4 },
-    ]
-  },
-  options: {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#8892a4', boxWidth: 12 } } },
-    scales: {
-      x: { grid: { display: false }, ticks: { color: '#8892a4' } },
-      y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#8892a4', callback: v => v + '%' } }
-    }
-  }
-});
+const gc = () => document.documentElement.dataset.theme === 'dark'
+  ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+const tc = () => document.documentElement.dataset.theme === 'dark'
+  ? '#8892a4' : '#64748b';
 
-// 히트맵
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
-const SHIFTS = ['D교대', 'E교대', 'N교대'];
-// 누락률 데이터 [shift][day]
-const HM = [
-  [5.2, 4.8, 5.9, 6.1, 5.4, 4.2, 3.8],  // D
-  [4.9, 5.3, 5.1, 5.8, 6.2, 5.0, 4.4],  // E
-  [7.8, 8.2, 7.5, 9.1, 8.8, 6.3, 5.9],  // N
-];
+const DUTY_KEYS = { 'Day': 0, 'Evening': 1, 'Night': 2 };
+const DUTY_LABELS = ['D교대', 'E교대', 'N교대'];
 
-function heatColor(v) {
-  // 3% = blue, 6% = yellow, 10% = red
-  if (v <= 4)   return `rgba(59,130,246,${0.3 + v * 0.05})`;
-  if (v <= 6)   return `rgba(245,158,11,${0.4 + (v-4) * 0.1})`;
-  return         `rgba(239,68,68,${0.5 + (v-6) * 0.08})`;
+// DOW: 0=일,1=월..6=토 → 우리 배열 기준 0=월..6=일
+function dateToDay(dateStr) {
+  // dateStr: YYYY-MM-DD
+  const d = new Date(dateStr + 'T00:00:00');
+  return (d.getDay() + 6) % 7; // 0=월,6=일
 }
 
-const hm = document.getElementById('heatmap');
-// header row
-hm.insertAdjacentHTML('beforeend', '<div></div>');
-DAYS.forEach(d => hm.insertAdjacentHTML('beforeend', `<div class="hm-head">${d}</div>`));
-// data rows
-SHIFTS.forEach((s, si) => {
-  hm.insertAdjacentHTML('beforeend', `<div class="hm-lbl">${s}</div>`);
-  DAYS.forEach((_, di) => {
-    const v = HM[si][di];
-    hm.insertAdjacentHTML('beforeend',
-      `<div class="hm-cell" style="background:${heatColor(v)}" title="${s} ${DAYS[di]}: ${v}%">${v}%</div>`);
+function readUploadKeys() {
+  // 교대별·요일별 집계
+  const dutyCount = [0, 0, 0]; // D,E,N
+  const hm = [[0,0,0,0,0,0,0],[0,0,0,0,0,0,0],[0,0,0,0,0,0,0]]; // [shift][day]
+  const typeByDuty = { Day: {}, Evening: {}, Night: {} };
+  let total = 0;
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('upload_')) continue;
+    const parts = key.split('_'); // upload_DATE_DOCTYPE_DUTY
+    if (parts.length < 4) continue;
+    const date = parts[1];
+    const duty = parts[3];
+    const si = DUTY_KEYS[duty];
+    if (si === undefined) continue;
+    try {
+      const val = JSON.parse(localStorage.getItem(key));
+      if (!val) continue;
+      total++;
+      dutyCount[si]++;
+      const dow = dateToDay(date);
+      hm[si][dow]++;
+    } catch(e) {}
+  }
+  return { dutyCount, hm, total };
+}
+
+let shiftBarChart = null;
+
+function buildShift() {
+  const { dutyCount, hm, total } = readUploadKeys();
+  const hasData = total > 0;
+
+  document.getElementById('shift-empty').style.display = hasData ? 'none' : 'block';
+  document.getElementById('shift-bar-card').style.display = hasData ? '' : 'none';
+  document.getElementById('shift-heatmap-card').style.display = hasData ? '' : 'none';
+  document.getElementById('top3-grid').style.display = hasData ? '' : 'none';
+
+  if (!hasData) return;
+
+  // 바차트
+  if (shiftBarChart) shiftBarChart.destroy();
+  shiftBarChart = new Chart(document.getElementById('shiftBar').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: DUTY_LABELS,
+      datasets: [{
+        label: '업로드 건수',
+        data: dutyCount,
+        backgroundColor: ['rgba(59,130,246,0.75)', 'rgba(167,139,250,0.75)', 'rgba(20,184,166,0.75)'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.y}건` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: tc() } },
+        y: { grid: { color: gc() }, ticks: { color: tc(), stepSize: 1 } }
+      }
+    }
   });
-});
+
+  // 히트맵
+  function heatColor(v, max) {
+    if (max === 0) return 'rgba(100,116,139,0.15)';
+    const r = v / max;
+    if (r === 0) return 'rgba(100,116,139,0.12)';
+    if (r < 0.33) return `rgba(59,130,246,${0.25 + r * 0.5})`;
+    if (r < 0.66) return `rgba(245,158,11,${0.35 + r * 0.4})`;
+    return `rgba(239,68,68,${0.4 + r * 0.45})`;
+  }
+  const maxVal = Math.max(...hm.flat(), 1);
+  const hmEl = document.getElementById('heatmap');
+  hmEl.innerHTML = '';
+  hmEl.insertAdjacentHTML('beforeend', '<div></div>');
+  DAYS.forEach(d => hmEl.insertAdjacentHTML('beforeend', `<div class="hm-head">${d}</div>`));
+  DUTY_LABELS.forEach((s, si) => {
+    hmEl.insertAdjacentHTML('beforeend', `<div class="hm-lbl">${s}</div>`);
+    DAYS.forEach((_, di) => {
+      const v = hm[si][di];
+      hmEl.insertAdjacentHTML('beforeend',
+        `<div class="hm-cell" style="background:${heatColor(v, maxVal)}" title="${s} ${DAYS[di]}: ${v}건">${v > 0 ? v + '건' : '0'}</div>`);
+    });
+  });
+
+  // Top3 카드 — 업로드 건수 기준 상위 요일
+  ['Day','Evening','Night'].forEach((duty, si) => {
+    const dayVals = DAYS.map((d, di) => ({ d, v: hm[si][di] }))
+      .sort((a, b) => b.v - a.v).slice(0, 3);
+    const elId = ['top3-d','top3-e','top3-n'][si];
+    const el = document.getElementById(elId);
+    if (dayVals[0].v === 0) {
+      el.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">업로드 기록 없음</div>';
+      return;
+    }
+    el.innerHTML = dayVals.map((item, ri) =>
+      `<div class="top3-item">
+        <span class="top3-rank">${ri+1}</span>
+        <span class="top3-name">${item.d}요일</span>
+        <span class="top3-val" style="color:${item.v >= 3?'var(--ok)':item.v>=1?'var(--warn)':'var(--faint)'}">${item.v}건</span>
+      </div>`
+    ).join('');
+  });
+}
+
+buildShift();
 </script>
 </body>
 </html>

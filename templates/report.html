@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>월별 보고서 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/style.css">
 <style>
@@ -39,30 +40,26 @@
       <span>EICU QI Monitor</span>
     </div>
     <span class="badge">중앙대병원 EICU · 13병상</span>
-    <span class="badge-pur">Flask v2.0</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px">
-    <button class="theme-btn" data-theme-toggle>
+    <button class="theme-btn" data-theme-toggle title="테마 변경">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
   </div>
 </header>
 <nav class="sidebar">
   <div class="nav-sec">모니터링</div>
-  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>수가 누락 현황</a>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
   <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
   <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
-  <div class="nav-sec">자동계산</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>연속처치 자동계산<span class="badge-pur" style="margin-left:auto;font-size:.6rem">NEW</span></div>
   <div class="nav-sec">관리</div>
-  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>체크리스트</div>
   <a class="nav-item active" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
 </nav>
 <main class="main">
   <div class="pg-header">
     <div>
       <div class="pg-title">월별 보고서</div>
-      <div class="pg-sub">QI 활동 월별 KPI 요약 및 개선 성과 보고</div>
+      <div class="pg-sub">QI 활동 월별 KPI 요약 · 실 업로드 데이터 기반</div>
     </div>
     <button class="print-btn" onclick="window.print()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -70,111 +67,166 @@
     </button>
   </div>
 
+  <!-- 데이터 없음 안내 -->
+  <div id="report-empty" class="card" style="display:none">
+    <div style="padding:2.5rem;text-align:center;color:var(--muted);font-size:.85rem;line-height:2">
+      대시보드에서 파일을 업로드하면<br>월별 KPI가 여기에 집계됩니다.<br>
+      <span style="font-size:.75rem;color:var(--faint)">업로드 데이터가 날짜별로 저장되어 월별로 자동 집계됩니다.</span>
+    </div>
+  </div>
+
   <!-- KPI 요약 테이블 -->
-  <div class="card">
+  <div class="card" id="report-table-card">
     <div class="card-hd">
-      <div><div class="card-title">월별 KPI 요약</div><div class="card-sub">2024년 11월 QI 활동 시작 이후</div></div>
+      <div><div class="card-title">월별 KPI 요약</div><div class="card-sub" id="report-sub">실 업로드 데이터 기반</div></div>
     </div>
     <div style="overflow-x:auto">
       <table>
         <thead>
           <tr>
             <th>월</th>
-            <th>전체 누락률</th>
-            <th>연속처치 누락률</th>
-            <th>체크리스트 수행률</th>
-            <th>추정 누락 금액</th>
+            <th>총 업로드 건수</th>
+            <th>확인 필요 건수</th>
+            <th>과다 출고 건수</th>
+            <th>이브닝 정산 건수</th>
             <th>비고</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>2024년 11월</td>
-            <td style="font-family:var(--fm);color:var(--err)">12.4%</td>
-            <td style="font-family:var(--fm);color:var(--err)">18.7%</td>
-            <td style="font-family:var(--fm);color:var(--err)">61.2%</td>
-            <td style="font-family:var(--fm)">₩3,840,000</td>
-            <td><span class="tag tag-b">QI 시작</span></td>
-          </tr>
-          <tr>
-            <td>2024년 12월</td>
-            <td style="font-family:var(--fm);color:var(--err)">10.8%</td>
-            <td style="font-family:var(--fm);color:var(--err)">15.2%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">68.5%</td>
-            <td style="font-family:var(--fm)">₩3,240,000</td>
-            <td><span class="tag tag-y">체크리스트 배포</span></td>
-          </tr>
-          <tr>
-            <td>2025년 1월</td>
-            <td style="font-family:var(--fm);color:var(--warn)">9.1%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">13.0%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">74.3%</td>
-            <td style="font-family:var(--fm)">₩2,730,000</td>
-            <td></td>
-          </tr>
-          <tr>
-            <td>2025년 2월</td>
-            <td style="font-family:var(--fm);color:var(--warn)">7.6%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">10.4%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">80.1%</td>
-            <td style="font-family:var(--fm)">₩2,280,000</td>
-            <td><span class="tag tag-y">교육 시행</span></td>
-          </tr>
-          <tr>
-            <td>2025년 3월</td>
-            <td style="font-family:var(--fm);color:var(--warn)">6.3%</td>
-            <td style="font-family:var(--fm);color:var(--warn)">8.9%</td>
-            <td style="font-family:var(--fm);color:var(--ok)">85.4%</td>
-            <td style="font-family:var(--fm)">₩1,890,000</td>
-            <td></td>
-          </tr>
-          <tr style="background:var(--pri-hl)">
-            <td><strong>2025년 4월</strong></td>
-            <td style="font-family:var(--fm);color:var(--warn)"><strong>5.2%</strong></td>
-            <td style="font-family:var(--fm);color:var(--warn)"><strong>7.1%</strong></td>
-            <td style="font-family:var(--fm);color:var(--ok)"><strong>89.2%</strong></td>
-            <td style="font-family:var(--fm)"><strong>₩1,560,000</strong></td>
-            <td><span class="tag tag-g">최신</span></td>
-          </tr>
+        <tbody id="report-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:1.5rem">업로드 후 집계됩니다</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- 개선 전후 비교 -->
-  <div class="card">
+  <!-- 개선 전후 비교 (2개월 이상 데이터 있을 때만 표시) -->
+  <div class="card" id="compare-card" style="display:none">
     <div class="card-hd">
-      <div><div class="card-title">QI 개선 전후 비교</div><div class="card-sub">QI 시작 전(2024년 11월) vs 현재(2025년 4월)</div></div>
+      <div><div class="card-title">기간 비교</div><div class="card-sub" id="compare-sub">첫 번째 월 vs 가장 최근 월</div></div>
     </div>
-    <div class="compare-grid">
-      <div class="compare-card before">
-        <div class="compare-label">QI 시작 전 · 2024년 11월</div>
-        <div class="compare-row"><span>전체 수가 누락률</span><span class="compare-val">12.4%</span></div>
-        <div class="compare-row"><span>연속처치 누락률</span><span class="compare-val">18.7%</span></div>
-        <div class="compare-row"><span>체크리스트 수행률</span><span class="compare-val">61.2%</span></div>
-        <div class="compare-row"><span>월 추정 누락 금액</span><span class="compare-val">₩3,840,000</span></div>
-        <div class="compare-row"><span>표준 업무 프로세스</span><span class="compare-val">미확립</span></div>
-      </div>
-      <div class="compare-card after">
-        <div class="compare-label">현재 · 2025년 4월</div>
-        <div class="compare-row"><span>전체 수가 누락률</span><span class="compare-val">5.2%</span></div>
-        <div class="compare-row"><span>연속처치 누락률</span><span class="compare-val">7.1%</span></div>
-        <div class="compare-row"><span>체크리스트 수행률</span><span class="compare-val">89.2%</span></div>
-        <div class="compare-row"><span>월 추정 누락 금액</span><span class="compare-val">₩1,560,000</span></div>
-        <div class="compare-row"><span>표준 업무 프로세스</span><span class="compare-val">체크리스트 운영 중</span></div>
-      </div>
-    </div>
-    <div style="margin-top:1rem;padding:.75rem 1rem;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);font-size:.8rem;color:var(--ok)">
-      ✓ 전체 누락률 <strong>58% 감소</strong> (12.4% → 5.2%) &nbsp;·&nbsp; 추정 누락금액 <strong>월 282만원 절감</strong> &nbsp;·&nbsp; 체크리스트 수행률 <strong>46% 향상</strong>
+    <div class="compare-grid" id="compare-grid"></div>
+    <div id="compare-summary" style="margin-top:1rem;padding:.75rem 1rem;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);font-size:.8rem;color:var(--ok)"></div>
+  </div>
+
+  <!-- 수집 중 안내 (1개월 데이터 있을 때) -->
+  <div class="card" id="collecting-card" style="display:none">
+    <div style="padding:1.25rem;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.8">
+      비교 데이터 수집 중 — 2개월 이상 데이터가 쌓이면 개선 전후 비교가 자동으로 표시됩니다.
     </div>
   </div>
 </main>
 </div>
 <script>
+// 테마 토글
 document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
   const h = document.documentElement;
-  h.dataset.theme = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  h.dataset.theme = next;
+  localStorage.setItem('eicu_theme', next);
 });
+
+function readMonthlySummary() {
+  const monthly = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('daily_summary_')) continue;
+    try {
+      const val = JSON.parse(localStorage.getItem(key));
+      const date = key.replace('daily_summary_', '');
+      const month = date.slice(0, 7);
+      if (!monthly[month]) monthly[month] = { uploads: 0, needsReview: 0, overstock: 0, evening: 0, isFirst: false, isLatest: false };
+      monthly[month].uploads   += (val.uploads   || 0);
+      monthly[month].needsReview += (val.needsReview || 0);
+      monthly[month].overstock += (val.overstock || 0);
+      monthly[month].evening   += (val.evening   || 0);
+    } catch(e) {}
+  }
+  return monthly;
+}
+
+function buildReport() {
+  const monthly = readMonthlySummary();
+  const months = Object.keys(monthly).sort();
+  const hasData = months.length > 0;
+
+  document.getElementById('report-empty').style.display = hasData ? 'none' : 'block';
+  document.getElementById('report-table-card').style.display = hasData ? '' : 'none';
+
+  if (!hasData) {
+    document.getElementById('compare-card').style.display = 'none';
+    document.getElementById('collecting-card').style.display = 'none';
+    return;
+  }
+
+  // KPI 테이블
+  const tbody = document.getElementById('report-tbody');
+  tbody.innerHTML = months.map((m, idx) => {
+    const d = monthly[m];
+    const isLatest = idx === months.length - 1;
+    const isFirst  = idx === 0;
+    const monthLabel = m.replace('-', '년 ') + '월';
+    const rowStyle = isLatest ? 'background:var(--pri-hl)' : '';
+    const tag = isLatest && months.length > 1 ? '<span class="tag tag-g">최신</span>'
+      : isFirst && months.length > 1 ? '<span class="tag tag-b">시작</span>' : '';
+    return `<tr style="${rowStyle}">
+      <td>${isLatest ? '<strong>' + monthLabel + '</strong>' : monthLabel}</td>
+      <td style="font-family:var(--fm)">${d.uploads || 0}</td>
+      <td style="font-family:var(--fm);color:${d.needsReview > 0 ? 'var(--warn)' : 'var(--ok)'}">${d.needsReview || 0}</td>
+      <td style="font-family:var(--fm);color:${d.overstock  > 0 ? 'var(--err)'  : 'var(--ok)'}">${d.overstock  || 0}</td>
+      <td style="font-family:var(--fm);color:var(--ok)">${d.evening || 0}</td>
+      <td>${tag}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('report-sub').textContent = `실 업로드 데이터 기반 · ${months[0].replace('-','년 ')}월 ~ ${months[months.length-1].replace('-','년 ')}월`;
+
+  // 비교 카드
+  if (months.length >= 2) {
+    document.getElementById('compare-card').style.display = '';
+    document.getElementById('collecting-card').style.display = 'none';
+    const first  = monthly[months[0]];
+    const latest = monthly[months[months.length-1]];
+    const firstLabel  = months[0].replace('-','년 ') + '월';
+    const latestLabel = months[months.length-1].replace('-','년 ') + '월';
+    document.getElementById('compare-sub').textContent = `${firstLabel} → ${latestLabel}`;
+
+    const row = (label, v1, v2) =>
+      `<div class="compare-row"><span>${label}</span><span class="compare-val">${v1}</span></div>
+       <div class="compare-row"><span>${label}</span><span class="compare-val">${v2}</span></div>`.split('</div>')[0] + '</div>';
+
+    const compareRow = (label, v1, v2) =>
+      `<div class="compare-row"><span>${label}</span><span class="compare-val">${v1}</span></div>`;
+
+    document.getElementById('compare-grid').innerHTML = `
+      <div class="compare-card before">
+        <div class="compare-label">${firstLabel}</div>
+        ${compareRow('총 업로드 건수', first.uploads)}
+        ${compareRow('확인 필요 건수', first.needsReview)}
+        ${compareRow('과다 출고 건수', first.overstock)}
+        ${compareRow('이브닝 정산 건수', first.evening)}
+      </div>
+      <div class="compare-card after">
+        <div class="compare-label">${latestLabel}</div>
+        ${compareRow('총 업로드 건수', latest.uploads)}
+        ${compareRow('확인 필요 건수', latest.needsReview)}
+        ${compareRow('과다 출고 건수', latest.overstock)}
+        ${compareRow('이브닝 정산 건수', latest.evening)}
+      </div>`;
+
+    const ovDiff = first.overstock - latest.overstock;
+    const summaryParts = [];
+    if (ovDiff > 0) summaryParts.push(`과다 출고 <strong>${ovDiff}건 감소</strong>`);
+    else if (ovDiff < 0) summaryParts.push(`과다 출고 <strong>${Math.abs(ovDiff)}건 증가</strong> — 확인 필요`);
+    else summaryParts.push('과다 출고 건수 변화 없음');
+    if (latest.uploads > first.uploads) summaryParts.push(`업로드 <strong>${latest.uploads - first.uploads}건 증가</strong>`);
+    document.getElementById('compare-summary').innerHTML = summaryParts.join(' &nbsp;·&nbsp; ');
+  } else {
+    document.getElementById('compare-card').style.display = 'none';
+    document.getElementById('collecting-card').style.display = '';
+  }
+}
+
+buildReport();
 </script>
 </body>
 </html>

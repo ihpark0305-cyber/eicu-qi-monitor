@@ -1,17 +1,7 @@
 {
-  "labels": ["1주","2주","3주","4주","5주(현재)"],
-  "total":  [5.6, 5.1, 4.9, 4.6, 4.8],
-  "continuous": [9.1, 8.8, 8.5, 8.1, 8.2],
-  "kpi": {
-    "match_rate": 4.8,
-    "evening_rate": 8.2,
-    "checklist_rate": 91,
-    "delay_cost": 152500,
-    "period_label": "전주 대비",
-    "delta_match": 0.2,
-    "delta_evening": 0.1,
-    "delta_checklist": 3,
-    "delta_delay_cost": -89000
-  },
-  "sub": "주별 반영 지연 감지 · 5월 1주 ~ 5주"
+  "labels": [],
+  "total": [],
+  "continuous": [],
+  "kpi": {},
+  "sub": "CSV 업로드 후 주별 추이가 표시됩니다"
 }

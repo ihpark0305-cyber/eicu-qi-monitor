@@ -1,7 +1,11 @@
 /* ─── Theme ─────────────────────────────────────────────── */
 (function(){
   const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
-  t&&t.addEventListener('click',()=>{r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');});
+  t&&t.addEventListener('click',()=>{
+    const next=r.getAttribute('data-theme')==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next);
+    localStorage.setItem('eicu_theme',next);
+  });
 })();
 
 const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
@@ -63,31 +67,39 @@ async function loadTrend(period){
   currentPeriod=period;
   const res=await fetch(`/api/trend?period=${period}`);
   const d=await res.json();
-  chart.data.labels=d.labels;
-  chart.data.datasets[0].data=d.total;
-  chart.data.datasets[1].data=d.continuous;
+  chart.data.labels=d.labels||[];
+  chart.data.datasets[0].data=d.total||[];
+  chart.data.datasets[1].data=d.continuous||[];
   chart.update('active');
-  document.getElementById('chart-sub').textContent=d.sub;
-  const k=d.kpi;
-  anim(document.getElementById('v1'),k.match_rate,800);
-  anim(document.getElementById('v2'),k.evening_rate,800);
-  anim(document.getElementById('v3'),k.checklist_rate,800,'int');
-  anim(document.getElementById('v4'),k.delay_cost,800,'money');
-  const pLabel=k.period_label;
+  document.getElementById('chart-sub').textContent=d.sub||'파일 업로드 후 추이가 표시됩니다';
+  const k=d.kpi||{};
+  // 데이터 없으면 KPI 카드에 "—" 유지
+  if(Object.keys(k).length===0){
+    document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 반영 지연 추정액':'입력-청구 반영 차이 추정액';
+    const alertBox=document.getElementById('alert-box');
+    const alertTxt=document.getElementById('alert-text');
+    alertBox.style.display='flex';
+    alertTxt.innerHTML='파일을 업로드하면 KPI 지표가 업데이트됩니다. <strong>CSV 또는 이미지 파일을 업로드하세요.</strong>';
+    return;
+  }
+  anim(document.getElementById('v1'),k.match_rate||0,800);
+  anim(document.getElementById('v2'),k.evening_rate||0,800);
+  anim(document.getElementById('v3'),k.checklist_rate||0,800,'int');
+  anim(document.getElementById('v4'),k.delay_cost||0,800,'money');
+  const pLabel=k.period_label||'';
   ['v1-p','v2-p','v3-p','v4-p'].forEach(id=>document.getElementById(id).textContent=pLabel);
-  document.getElementById('v1-d').textContent=(k.delta_match>0?'↑ +':'↓ ')+Math.abs(k.delta_match)+'%p';
+  document.getElementById('v1-d').textContent=(k.delta_match>0?'↑ +':'↓ ')+Math.abs(k.delta_match||0)+'%p';
   document.getElementById('v1-d').className=k.delta_match>0?'d-dn':'d-up';
-  document.getElementById('v2-d').textContent=(k.delta_evening>0?'↑ +':'↓ ')+Math.abs(k.delta_evening)+'%p';
+  document.getElementById('v2-d').textContent=(k.delta_evening>0?'↑ +':'↓ ')+Math.abs(k.delta_evening||0)+'%p';
   document.getElementById('v2-d').className=k.delta_evening>0?'d-dn':'d-up';
-  document.getElementById('v3-d').textContent=(k.delta_checklist>0?'↑ +':'↓ ')+Math.abs(k.delta_checklist)+'%p';
-  document.getElementById('v4-d').textContent=(k.delta_delay_cost>0?'↑ +₩':'↓ ₩')+Math.abs(k.delta_delay_cost).toLocaleString();
-  document.getElementById('v4-d').className=k.delta_delay_cost<0?'d-up':'d-dn';
+  document.getElementById('v3-d').textContent=(k.delta_checklist>0?'↑ +':'↓ ')+Math.abs(k.delta_checklist||0)+'%p';
+  document.getElementById('v4-d').textContent=(k.delta_delay_cost>0?'↑ +₩':'↓ ₩')+Math.abs(k.delta_delay_cost||0).toLocaleString();
+  document.getElementById('v4-d').className=(k.delta_delay_cost||0)<0?'d-up':'d-dn';
   document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 반영 지연 추정액':'입력-청구 반영 차이 추정액';
 
-  // 연속형 항목 지연율이 높으면 항상 안내 알림 표시
   const alertBox=document.getElementById('alert-box');
   const alertTxt=document.getElementById('alert-text');
-  if(k.evening_rate>5){
+  if((k.evening_rate||0)>5){
     alertBox.style.display='flex';
     alertTxt.innerHTML=`연속형 항목(산소·HFNC·인공호흡기)은 EMR 입력과 실제 전산 반영이 분리될 수 있어, <strong>이브닝 정산 확인이 필요합니다.</strong>`;
   } else {
@@ -153,39 +165,76 @@ async function loadIncidents(){
 }
 
 /* ─── Flow calc ──────────────────────────────────────────── */
-const DEMO_RECORDS=[
-  {time:"08:00",flow:0.4},
-  {time:"10:30",flow:0.5},
-  {time:"13:00",flow:0.6},
-  {time:"15:20",flow:0.4},
-  {time:"18:00",flow:null}
-];
+let flowRecords = [];
+
+function _parseMins(t){
+  const [h,m]=(t||'').split(':').map(Number);
+  return h*60+(m||0);
+}
+function _durStr(a,b){
+  const d=_parseMins(b)-_parseMins(a);
+  if(d<=0)return '—';
+  return Math.floor(d/60)+'h '+(d%60)+'m';
+}
 
 function renderFlowTable(){
   const colors={0.4:'var(--ok)',0.5:'var(--warn)',0.6:'var(--err)'};
-  const widths={0.4:40,0.5:55,0.6:70};
-  const durs=['2h 30m','2h 30m','2h 20m','2h 40m','—'];
+  const maxFlow=0.6;
   const wrap=document.getElementById('flow-records');
+  if(!wrap)return;
+  if(flowRecords.length===0){
+    wrap.innerHTML='<div style="font-size:.75rem;color:var(--faint);padding:.75rem;text-align:center">기록 추가 후 표시됩니다</div>';
+    return;
+  }
   wrap.innerHTML=`<div class="flow-row header"><span>시각</span><span>Flow (L/min)</span><span>값</span><span>구간</span></div>`+
-  DEMO_RECORDS.map((r,i)=>`
-    <div class="flow-row" style="${i===DEMO_RECORDS.length-1?'opacity:.4':''}">
+  flowRecords.map((r,i)=>{
+    const nextTime=flowRecords[i+1]?flowRecords[i+1].time:null;
+    const dur=nextTime?_durStr(r.time,nextTime):'—';
+    const barW=r.flow!=null?Math.round((r.flow/maxFlow)*70):0;
+    return `<div class="flow-row">
       <span class="flow-time">${r.time}</span>
       <div class="flow-bar-cell">
-        ${r.flow!=null?`<div class="flow-bar" style="width:${widths[r.flow]||30}%;background:${colors[r.flow]||'var(--muted)'}"></div>`:'<span style="font-size:.65rem;color:var(--faint)">← 이브닝 정산 시점</span>'}
+        ${r.flow!=null
+          ?`<div class="flow-bar" style="width:${barW}%;background:${colors[r.flow]||'var(--pri)'}"></div>`
+          :'<span style="font-size:.65rem;color:var(--faint)">정산 시점</span>'}
       </div>
-      <span class="flow-val" style="color:${r.flow!=null?colors[r.flow]:'var(--faint)'}">
+      <span class="flow-val" style="color:${r.flow!=null?(colors[r.flow]||'var(--pri)'):'var(--faint)'}">
         ${r.flow!=null?r.flow+' L':'-'}
       </span>
-      <span class="flow-dur">${durs[i]}</span>
-    </div>
-  `).join('');
+      <span class="flow-dur">${dur}</span>
+    </div>`;
+  }).join('');
+}
+
+function addFlowRecord(){
+  const tEl=document.getElementById('flow-in-time');
+  const fEl=document.getElementById('flow-in-val');
+  if(!tEl||!fEl)return;
+  const t=tEl.value.trim();
+  const f=parseFloat(fEl.value);
+  if(!t){alert('시각을 입력하세요');return;}
+  flowRecords.push({time:t,flow:isNaN(f)?null:f});
+  flowRecords.sort((a,b)=>_parseMins(a.time)-_parseMins(b.time));
+  tEl.value='';fEl.value='';
+  renderFlowTable();
+}
+
+function clearFlowRecords(){
+  if(!confirm('산소 기록을 모두 삭제할까요?'))return;
+  flowRecords=[];
+  renderFlowTable();
+  const cr=document.getElementById('calc-result');
+  const cp=document.getElementById('calc-placeholder');
+  if(cr)cr.style.display='none';
+  if(cp)cp.style.display='flex';
 }
 
 async function runCalc(){
+  if(flowRecords.length===0){alert('기록을 먼저 추가하세요');return;}
   const res=await fetch('/api/flow-calc',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({records:DEMO_RECORDS})
+    body:JSON.stringify({records:flowRecords})
   });
   const d=await res.json();
   document.getElementById('calc-placeholder').style.display='none';
@@ -415,7 +464,7 @@ function renderChecklist(state) {
   const ul = document.getElementById('chk-list');
   ul.innerHTML = CHECKLIST_ITEMS.map((text, i) => {
     const s = state[i];
-    return `<div class="chk" onclick="toggleCheck(${i})" style="cursor:pointer;user-select:none">
+    return `<div class="chk" data-chk-idx="${i}" style="cursor:pointer;user-select:none">
       <div class="chk-ico ${s.done ? 'done' : 'pend'}">
         ${s.done
           ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
@@ -918,6 +967,15 @@ function openPrintLabels() {
 }
 
 /* ─── Init ───────────────────────────────────────────────── */
+// 체크리스트 이벤트 위임 (동적 HTML에서도 클릭 동작)
+(function(){
+  const list = document.getElementById('chk-list');
+  if(list) list.addEventListener('click', e => {
+    const row = e.target.closest('[data-chk-idx]');
+    if(row) toggleCheck(Number(row.dataset.chkIdx));
+  });
+})();
+
 initEmptyState();
 loadChecklistLocal();
 renderFlowTable();

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/style.css">
@@ -302,8 +303,14 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
       <div>
-        <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">산소 Flow 변경 기록 (EMR 자동 수집)</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">산소 Flow 변경 기록 <span style="font-size:.65rem;color:var(--faint)">(직접 입력)</span></div>
         <div id="flow-records" class="flow-table"></div>
+        <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+          <input id="flow-in-time" type="time" style="flex:1;min-width:90px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
+          <input id="flow-in-val" type="number" step="0.1" min="0" max="15" placeholder="L/min" style="width:72px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
+          <button class="upload-btn" style="padding:.3rem .65rem;font-size:.72rem" onclick="addFlowRecord()">추가</button>
+          <button onclick="clearFlowRecords()" style="padding:.3rem .5rem;font-size:.7rem;color:var(--muted);background:none;border:1px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer">초기화</button>
+        </div>
       </div>
       <div id="calc-result" style="display:none">
         <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">이브닝 정산 계산 결과</div>
