@@ -1,5 +1,5 @@
-import os, json, re
-import google.generativeai as genai
+import os, base64, json, re
+import requests
 
 PROMPT = """이 이미지는 병원 불출증 또는 간호처방집계입니다.
 표에서 각 행의 데이터를 추출하여 아래 JSON 형식으로만 응답하세요.
@@ -36,6 +36,8 @@ MIME_MAP = {
     '.webp': 'image/webp',
 }
 
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+
 
 def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -43,24 +45,41 @@ def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
         return {"error": "GEMINI_API_KEY 미설정", "manual_mode": True}
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        b64 = base64.b64encode(file_bytes).decode("utf-8")
 
-        # 이미지를 dict 형식으로 전달 (raw bytes)
-        image_part = {"mime_type": mime_type, "data": file_bytes}
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": PROMPT},
+                    {"inline_data": {"mime_type": mime_type, "data": b64}}
+                ]
+            }]
+        }
 
-        response = model.generate_content([PROMPT, image_part])
-        raw = response.text.strip()
+        res = requests.post(
+            GEMINI_URL,
+            params={"key": api_key},
+            json=payload,
+            timeout=30
+        )
+        result = res.json()
 
-        # JSON 배열 추출
-        match = re.search(r'\[.*\]', raw, re.DOTALL)
+        if "error" in result:
+            msg = result["error"].get("message", str(result["error"]))
+            return {"error": f"Gemini API 오류: {msg}", "manual_mode": True}
+
+        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+        match = re.search(r'\[.*\]', text, re.DOTALL)
         if not match:
-            return {"error": f"JSON 추출 실패: {raw[:200]}", "manual_mode": True}
+            return {"error": f"JSON 추출 실패: {text[:200]}", "manual_mode": True}
 
         items = json.loads(match.group())
         return {"items": items, "count": len(items)}
 
+    except requests.exceptions.Timeout:
+        return {"error": "요청 시간 초과 (30초)", "manual_mode": True}
     except json.JSONDecodeError as e:
         return {"error": f"JSON 파싱 오류: {str(e)}", "manual_mode": True}
     except Exception as e:
-        return {"error": f"Gemini 오류: {str(e)}", "manual_mode": True}
+        return {"error": f"오류: {str(e)}", "manual_mode": True}
