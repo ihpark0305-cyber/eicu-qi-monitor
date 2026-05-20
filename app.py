@@ -72,7 +72,7 @@ def test_gemini():
         return jsonify({"status": "error", "msg": "GEMINI_API_KEY 없음"})
     try:
         res = req.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
             params={"key": key},
             json={"contents": [{"parts": [{"text": "안녕"}]}]},
             timeout=10

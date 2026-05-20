@@ -36,7 +36,7 @@ MIME_MAP = {
     '.webp': 'image/webp',
 }
 
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 
 def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
