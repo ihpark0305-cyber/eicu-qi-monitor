@@ -511,7 +511,429 @@ function updateTypeChart(d) {
   }).join('');
 }
 
+/* ─── Upload Tab Switch ──────────────────────────────────── */
+function switchUploadTab(tab) {
+  const csv   = document.getElementById('upload-csv-panel');
+  const image = document.getElementById('upload-image-panel');
+  if (csv)   csv.style.display   = tab === 'csv'   ? '' : 'none';
+  if (image) image.style.display = tab === 'image' ? '' : 'none';
+  document.querySelectorAll('.upload-tab').forEach(el =>
+    el.classList.toggle('active', el.dataset.tab === tab));
+}
+
+/* ─── Image OCR Upload ───────────────────────────────────── */
+async function handleImageUpload() {
+  const file = document.getElementById('upload-image').files[0];
+  if (!file) { alert('이미지 파일을 선택해주세요.'); return; }
+
+  const date    = document.getElementById('meta-date').value    || new Date().toISOString().slice(0,10);
+  const doctype = document.getElementById('meta-doctype').value;
+  const duty    = document.getElementById('meta-duty').value;
+
+  if (!checkDuplicate(date, doctype, duty)) return;
+
+  const st = document.getElementById('upload-status');
+  st.textContent = '⏳ AI가 이미지를 읽는 중...';
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const res = await fetch('/api/ocr-upload', { method: 'POST', body: form });
+    const d   = await res.json();
+
+    if (d.error && !d.manual_mode) {
+      st.textContent = '❌ ' + d.error;
+      return;
+    }
+    window._currentMeta = {
+      date, doctype, duty,
+      memo: document.getElementById('meta-memo').value
+    };
+    if (d.manual_mode) {
+      renderOcrTable([], true);
+      st.textContent = '✏️ 수동 입력 모드 — 직접 입력 후 확정해주세요.';
+    } else {
+      renderOcrTable(d.items || [], false);
+      st.textContent = `✓ ${d.count}개 항목 추출 완료 — 수정 후 "분석 확정" 클릭`;
+    }
+  } catch(e) {
+    st.textContent = '❌ 네트워크 오류: ' + e.message;
+  }
+}
+
+/* ─── Duplicate Upload Check ────────────────────────────── */
+function checkDuplicate(date, doctype, duty) {
+  const key = `upload_${date}_${doctype}_${duty}`;
+  if (!localStorage.getItem(key)) return true;
+  const labels = { bulchul:'불출증', ganhocheo:'간호처방집계', other:'기타' };
+  const dutyL  = { day:'Day', evening:'Evening', night:'Night' };
+  return confirm(`${date} ${dutyL[duty]} ${labels[doctype]}는 이미 등록되었습니다.\n덮어쓰시겠습니까?`);
+}
+
+/* ─── OCR Table Render ───────────────────────────────────── */
+function renderOcrTable(items, manualMode) {
+  document.getElementById('ocr-result-section').style.display = '';
+  document.getElementById('ocr-count-label').textContent = manualMode
+    ? '수동 입력 모드 — 직접 입력 후 확정'
+    : `${items.length}개 항목 추출됨 · 노란 셀 = 불확실 · 수정 후 확정`;
+
+  window._ocrOriginal = items.map(r => ({...r}));
+  window._editCount   = 0;
+
+  const tbody = document.getElementById('ocr-tbody');
+  tbody.innerHTML = items.map((r, i) => _ocrRowHtml(i, r)).join('');
+  if (manualMode || items.length === 0) _addEmptyOcrRow();
+
+  tbody.addEventListener('input', _onOcrEdit, { once: false });
+  document.getElementById('ocr-result-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function _ocrRowHtml(i, r) {
+  const cell = (val, key) => {
+    const low = r.confidence === 'low' || val === null || val === undefined || val === '';
+    const bg  = low ? 'background:rgba(234,179,8,.18);' : '';
+    return `<td><input class="ocr-input" style="${bg}" value="${val ?? ''}"
+      data-idx="${i}" data-key="${key}" data-original="${val ?? ''}" /></td>`;
+  };
+  return `<tr id="ocr-row-${i}">
+    ${cell(r.item,'item')}${cell(r.unit,'unit')}${cell(r.order_qty,'order_qty')}
+    ${cell(r.delivered_qty,'delivered_qty')}${cell(r.undelivered_qty,'undelivered_qty')}
+    ${cell(r.actual_qty,'actual_qty')}${cell(r.note,'note')}
+    <td><button onclick="removeOcrRow(${i})" style="color:var(--err);font-size:.75rem;background:none;border:none;cursor:pointer;padding:2px 6px">✕</button></td>
+  </tr>`;
+}
+
+function _addEmptyOcrRow() {
+  const i = document.getElementById('ocr-tbody').rows.length;
+  document.getElementById('ocr-tbody').insertAdjacentHTML('beforeend',
+    _ocrRowHtml(i, {item:'',unit:'',order_qty:null,delivered_qty:null,
+                    undelivered_qty:null,actual_qty:null,note:'',confidence:'low'}));
+}
+
+function addOcrRow() { _addEmptyOcrRow(); }
+
+function removeOcrRow(i) { document.getElementById('ocr-row-'+i)?.remove(); }
+
+function _onOcrEdit() {
+  let count = 0;
+  document.querySelectorAll('.ocr-input').forEach(inp => {
+    if (inp.value !== inp.dataset.original) count++;
+  });
+  window._editCount = count;
+  const el = document.getElementById('ocr-edit-count');
+  if (el) el.textContent = count > 0 ? `${count}개 셀 수정됨` : '';
+}
+
+/* ─── Confirm OCR Data → Analysis ───────────────────────── */
+const CONTINUOUS_RE = /산소|O2|HFNC|고유량|인공호흡|ventilator|CRRT|지속/i;
+
+function confirmOcrData() {
+  const rows = [...document.querySelectorAll('#ocr-tbody tr')].map(tr => {
+    const ins = tr.querySelectorAll('input');
+    return {
+      item:            ins[0]?.value.trim() || '',
+      unit:            ins[1]?.value || '',
+      order_qty:       parseFloat(ins[2]?.value) || 0,
+      delivered_qty:   parseFloat(ins[3]?.value) || 0,
+      undelivered_qty: parseFloat(ins[4]?.value) || 0,
+      actual_qty:      parseFloat(ins[5]?.value) || 0,
+      note:            ins[6]?.value || '',
+    };
+  }).filter(r => r.item);
+
+  if (!rows.length) {
+    document.getElementById('ocr-status').textContent = '⚠️ 항목이 없습니다. 행을 추가해주세요.';
+    return;
+  }
+
+  const maxSettings = loadMaxSettings();
+  const delay = rows.filter(r =>
+    r.undelivered_qty > 0 || r.actual_qty < r.order_qty * 0.9
+  );
+  const overstock = rows.filter(r => {
+    const customMax = maxSettings[r.item];
+    return customMax ? r.actual_qty > customMax : r.delivered_qty > r.order_qty * 1.2;
+  });
+  const eveningItems = rows.filter(r => CONTINUOUS_RE.test(r.item));
+
+  // 사례 테이블 갱신
+  renderDelayTable([
+    ...delay.map(r => ({
+      item: r.item,
+      cause: `청구 ${r.order_qty} / 출고 ${r.delivered_qty} / 미출고 ${r.undelivered_qty}`,
+      shift: window._currentMeta?.duty || '업로드',
+      severity: r.undelivered_qty > 0 ? 'high' : 'medium',
+      highlight: r.undelivered_qty > 0 ? 'red' : 'orange',
+    })),
+    ...overstock.map(r => ({
+      item: r.item,
+      cause: `과다 적재 의심 (실수량 ${r.actual_qty} / MAX ${maxSettings[r.item] || '기준치'})`,
+      shift: window._currentMeta?.duty || '업로드',
+      severity: 'medium',
+      highlight: 'yellow',
+    })),
+  ]);
+  updateTypeChart({ delay_items: delay, total_items: rows.length });
+
+  // KPI
+  const matchRate = rows.length
+    ? Math.round((rows.length - delay.length) / rows.length * 100) : 0;
+  anim(document.getElementById('v1'), matchRate, 600);
+
+  // Daily Summary
+  _updateSummaryCard(rows.length, delay.length, overstock.length, eveningItems.length);
+
+  // 인수인계 메모 저장
+  const memos = rows.filter(r => r.note && r.note.trim());
+  if (memos.length) {
+    saveHandoverMemos(memos.map(r => ({
+      item: r.item, note: r.note,
+      duty: window._currentMeta?.duty || ''
+    })));
+    renderHandoverBanner();
+  }
+
+  // localStorage 저장
+  const meta = window._currentMeta || {};
+  const key  = `upload_${meta.date||'unknown'}_${meta.doctype||'unknown'}_${meta.duty||'unknown'}`;
+  localStorage.setItem(key, JSON.stringify({
+    meta, rows,
+    original:    window._ocrOriginal || [],
+    editCount:   window._editCount   || 0,
+    confirmedAt: new Date().toISOString(),
+    stats: { total: rows.length, delay: delay.length,
+             overstock: overstock.length, evening: eveningItems.length }
+  }));
+
+  // Top5 갱신
+  buildTop5();
+
+  // 경고 beep
+  if (delay.length > 0 || overstock.length > 0) playBeep(660, 0.18);
+
+  document.getElementById('ocr-status').textContent =
+    `✓ ${rows.length}건 확정 · 지연/미처리 ${delay.length}건 · 이브닝 정산 ${eveningItems.length}건`;
+  document.getElementById('last-updated').textContent =
+    '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
+}
+
+function _updateSummaryCard(total, delayCount, overstockCount, eveningCount) {
+  const today = new Date().toISOString().slice(0,10);
+  const prev  = JSON.parse(localStorage.getItem('daily_summary_'+today) || '{"uploads":0,"extracted":0}');
+  const data  = { uploads: (prev.uploads||0)+1, extracted: (prev.extracted||0)+total };
+  localStorage.setItem('daily_summary_'+today, JSON.stringify(data));
+  const s = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  s('sum-uploads',    data.uploads);
+  s('sum-extracted',  data.extracted);
+  s('sum-needs-review', delayCount);
+  s('sum-overstock',  overstockCount);
+  s('sum-evening',    eveningCount);
+}
+
+/* ─── Phase 2-A: Duty Alarm ─────────────────────────────── */
+const DUTY_END_TIMES = { day:'14:30', evening:'22:30', night:'06:30' };
+
+function checkDutyAlarm() {
+  const now   = new Date();
+  const hhmm  = now.toTimeString().slice(0,5);
+  const today = now.toISOString().slice(0,10);
+  Object.entries(DUTY_END_TIMES).forEach(([duty, time]) => {
+    if (hhmm !== time) return;
+    const confirmed = ['bulchul','ganhocheo','other'].some(doc =>
+      localStorage.getItem(`upload_${today}_${doc}_${duty}`)
+    );
+    if (!confirmed) _showDutyModal(duty);
+  });
+}
+
+function _showDutyModal(duty) {
+  const labels = { day:'Day', evening:'Evening', night:'Night' };
+  const el  = document.getElementById('duty-alarm-modal');
+  const msg = document.getElementById('duty-alarm-msg');
+  if (!el || !msg) return;
+  msg.textContent =
+    `인수인계 30분 전입니다.\n금일 ${labels[duty]} 근무 코스트 누락 점검 서류가 아직 확정되지 않았습니다.`;
+  el.style.display = 'flex';
+}
+
+setInterval(checkDutyAlarm, 60000);
+
+/* ─── Phase 2-B: Audio Beep ─────────────────────────────── */
+function playBeep(freq=880, dur=0.15, vol=0.3) {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
+  } catch(e) {}
+}
+
+/* ─── Phase 2-C: Custom MAX Settings ────────────────────── */
+const MAX_KEY = 'custom_max_settings';
+
+function loadMaxSettings() {
+  return JSON.parse(localStorage.getItem(MAX_KEY) || '{}');
+}
+
+function renderMaxList() {
+  const settings = loadMaxSettings();
+  const list     = document.getElementById('max-list');
+  if (!list) return;
+  list.innerHTML = Object.entries(settings).map(([item, qty]) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;
+      padding:.375rem .625rem;background:var(--surf2);border-radius:var(--r-sm);font-size:.85rem">
+      <span>${item}</span>
+      <span style="display:flex;gap:.5rem;align-items:center">
+        <span style="font-family:var(--fm);color:var(--muted)">MAX: ${qty}</span>
+        <button onclick="removeMaxSetting('${item.replace(/'/g,"\\'")}');event.stopPropagation()"
+          style="color:var(--err);font-size:.7rem;background:none;border:none;cursor:pointer">✕</button>
+      </span>
+    </div>`
+  ).join('') || '<p style="color:var(--muted);font-size:.8rem;padding:.25rem">설정된 항목 없음</p>';
+
+  // 라벨 인쇄 버튼 표시 여부
+  const btn = document.getElementById('print-label-btn');
+  if (btn) btn.style.display = Object.keys(settings).length ? '' : 'none';
+}
+
+function addMaxSetting() {
+  const item = document.getElementById('max-item-name')?.value.trim();
+  const qty  = parseInt(document.getElementById('max-item-qty')?.value);
+  if (!item || !qty || qty < 1) return;
+  const s = loadMaxSettings(); s[item] = qty;
+  localStorage.setItem(MAX_KEY, JSON.stringify(s));
+  document.getElementById('max-item-name').value = '';
+  document.getElementById('max-item-qty').value  = '';
+  renderMaxList();
+}
+
+function removeMaxSetting(item) {
+  const s = loadMaxSettings(); delete s[item];
+  localStorage.setItem(MAX_KEY, JSON.stringify(s));
+  renderMaxList();
+}
+
+function openMaxSettings() {
+  renderMaxList();
+  const m = document.getElementById('max-settings-modal');
+  if (m) m.style.display = 'flex';
+}
+
+/* ─── Phase 2-D: Weekly Top 5 ───────────────────────────── */
+function buildTop5() {
+  const counts = {};
+  const today  = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0,10);
+    ['bulchul','ganhocheo','other'].forEach(doc =>
+      ['day','evening','night'].forEach(duty => {
+        const raw = localStorage.getItem(`upload_${ds}_${doc}_${duty}`);
+        if (!raw) return;
+        try {
+          const { rows = [] } = JSON.parse(raw);
+          rows.filter(r => r.undelivered_qty > 0 || r.actual_qty < r.order_qty)
+              .forEach(r => { if(r.item) counts[r.item] = (counts[r.item]||0)+1; });
+        } catch(e) {}
+      })
+    );
+  }
+  const top5   = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxCnt = top5[0]?.[1] || 1;
+  const panel  = document.getElementById('top5-list');
+  if (!panel) return;
+  if (!top5.length) {
+    panel.innerHTML = '<div style="color:var(--ok);font-size:.8rem;padding:.75rem;font-weight:600">✓ 최근 7일 누락 항목 없음</div>';
+    return;
+  }
+  panel.innerHTML = top5.map(([item, cnt], rank) => {
+    const pct   = Math.round(cnt / maxCnt * 100);
+    const color = rank === 0 ? 'var(--err)' : rank <= 1 ? 'var(--warn)' : 'var(--ok)';
+    return `<div class="prog-item">
+      <div class="prog-row">
+        <span class="prog-lbl">${rank+1}위 · ${item}</span>
+        <span class="prog-val" style="color:${color}">${cnt}회</span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ─── Phase 2-E: Handover Memo ──────────────────────────── */
+const HANDOVER_KEY = 'handover_memos';
+
+function saveHandoverMemos(items) {
+  const now      = Date.now();
+  const existing = JSON.parse(localStorage.getItem(HANDOVER_KEY) || '[]');
+  const fresh    = existing.filter(m => m.expires > now);
+  const newMemos = items.map(m => ({ ...m, expires: now + 24*60*60*1000 }));
+  localStorage.setItem(HANDOVER_KEY, JSON.stringify([...fresh, ...newMemos]));
+}
+
+function renderHandoverBanner() {
+  const now   = Date.now();
+  const memos = JSON.parse(localStorage.getItem(HANDOVER_KEY) || '[]')
+                  .filter(m => m.expires > now);
+  const el    = document.getElementById('handover-banner');
+  const items = document.getElementById('handover-items');
+  if (!el || !items) return;
+  if (!memos.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  const dutyL = { day:'Day', evening:'Evening', night:'Night' };
+  items.innerHTML = memos.map(m =>
+    `<div style="margin-bottom:.2rem">
+      · <strong>${m.item}</strong>: ${m.note}
+      <span style="color:var(--faint);font-size:.65rem;margin-left:.4rem">(${dutyL[m.duty]||m.duty} 듀티)</span>
+    </div>`
+  ).join('');
+}
+
+function clearHandover() {
+  localStorage.removeItem(HANDOVER_KEY);
+  const el = document.getElementById('handover-banner');
+  if (el) el.style.display = 'none';
+}
+
+/* ─── Phase 2-F: Print Labels ───────────────────────────── */
+function openPrintLabels() {
+  const settings = loadMaxSettings();
+  if (!Object.keys(settings).length) {
+    alert('⚙️ MAX 설정에서 품목을 먼저 등록하세요.'); return;
+  }
+  const area = document.getElementById('print-label-area');
+  if (!area) return;
+  area.innerHTML = Object.entries(settings).map(([item, qty]) =>
+    `<div class="label-card">
+      <div class="label-item">${item}</div>
+      <div class="label-max">MAX: ${qty}개</div>
+      <div class="label-warn">⚠️ 초과 적재 금지</div>
+    </div>`
+  ).join('');
+  window.print();
+}
+
 /* ─── Init ───────────────────────────────────────────────── */
 initEmptyState();
 loadChecklistLocal();
 renderFlowTable();
+renderHandoverBanner();
+buildTop5();
+renderMaxList();
+
+// meta-date 기본값 오늘
+const _md = document.getElementById('meta-date');
+if (_md) _md.value = new Date().toISOString().slice(0,10);
+
+// 오늘 Daily Summary 복원
+const _todayKey = 'daily_summary_' + new Date().toISOString().slice(0,10);
+const _ds = JSON.parse(localStorage.getItem(_todayKey) || 'null');
+if (_ds) {
+  const s = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  s('sum-uploads',   _ds.uploads   || 0);
+  s('sum-extracted', _ds.extracted || 0);
+}

@@ -122,3 +122,15 @@ tbody td:first-child{font-weight:500;color:var(--txt)}
 .result-badge.badge-o{background:rgba(245,158,11,.15);color:#d97706}
 @media(max-width:900px){.app{grid-template-columns:1fr}.sidebar{display:none}.kpi-grid{grid-template-columns:repeat(2,1fr)}.charts-row,.bot-row{grid-template-columns:1fr}}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:99px}
+/* ── OCR Input ───────────────────────────────────────────── */
+.ocr-input{width:100%;background:none;border:none;color:inherit;font:inherit;padding:2px 4px;border-radius:3px;outline:none}
+.ocr-input:focus{background:var(--surf2)}
+/* ── Print Labels ───────────────────────────────────────── */
+.label-card{border:2px solid #333;border-radius:6px;padding:1rem;text-align:center;page-break-inside:avoid;font-family:sans-serif;background:#fff;color:#111}
+.label-card .label-item{font-size:1rem;font-weight:700;margin-bottom:.25rem}
+.label-card .label-max{font-size:1.5rem;font-weight:800;margin:.375rem 0;color:#111}
+.label-card .label-warn{font-size:.7rem;color:#dc2626;border-top:1px solid #ccc;padding-top:.375rem;margin-top:.375rem}
+@media print{
+  body > *:not(#print-label-area){display:none!important}
+  #print-label-area{display:grid!important;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1.5rem}
+}

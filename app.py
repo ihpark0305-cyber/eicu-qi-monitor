@@ -4,6 +4,7 @@ from flask import Flask, render_template, jsonify, request
 from modules.flow_calculator import calculate_oxygen_charge
 from modules.data_loader import get_monthly_data, get_weekly_data, get_checklist, get_incidents
 from modules.upload_parser import parse_upload, compare_files, read_df
+from modules.ocr_parser import extract_from_image, MIME_MAP
 
 app = Flask(__name__)
 
@@ -61,6 +62,17 @@ def compare():
     result = compare_files(df1, df2)
     if "error" in result:
         return jsonify(result), 400
+    return jsonify(result)
+
+@app.route("/api/ocr-upload", methods=["POST"])
+def ocr_upload():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext not in MIME_MAP:
+        return jsonify({"error": "JPG/PNG/GIF/WEBP만 지원합니다"}), 400
+    result = extract_from_image(file.read(), MIME_MAP[ext])
     return jsonify(result)
 
 @app.route("/analysis")
