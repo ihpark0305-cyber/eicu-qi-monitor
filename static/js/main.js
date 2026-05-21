@@ -405,6 +405,17 @@ async function handleCompare() {
   if (d.diff_items && d.diff_items.length > 0) renderDelayTable(d.diff_items);
   updateTypeChart(d);
 
+  // Phase 4: CSV 다운로드용 데이터 저장
+  if (d.diff_items) {
+    window._comparisonData = d.diff_items.map(r => ({
+      item: r.item,
+      prescribed: r.order_qty ?? r.prescribed ?? 0,
+      dispensed:  r.delivered_qty ?? r.dispensed ?? 0
+    }));
+    const dlArea = document.getElementById('csv-download-area');
+    if (dlArea) dlArea.style.display = 'block';
+  }
+
   document.getElementById('upload-status').textContent =
     `⇄ 비교 완료 · 차이 항목 ${d.diff_count}건 · ${d.date}`;
   document.getElementById('last-updated').textContent =
@@ -995,3 +1006,375 @@ if (_ds) {
   s('sum-uploads',   _ds.uploads   || 0);
   s('sum-extracted', _ds.extracted || 0);
 }
+
+/* ══════════════════════════════════════════════════════════
+   Phase 4 : 실 사용 편의 기능
+══════════════════════════════════════════════════════════ */
+
+// ── 공통 유틸 ──────────────────────────────────────────────
+const _TODAY = new Date().toISOString().slice(0, 10);
+
+function _timeToMinutes(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function _formatHMS(sec) {
+  const h = Math.floor(sec / 3600).toString().padStart(2, '0');
+  const m = Math.floor((sec % 3600) / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
+
+// ── FiO₂ → Flow 변환 ───────────────────────────────────────
+const FIO2_MAP = {21:0, 24:1, 28:2, 31:3, 35:4, 40:6, 44:8, 50:10, 60:12};
+
+function fio2ToFlow(fio2) {
+  const keys = Object.keys(FIO2_MAP).map(Number).sort((a, b) => a - b);
+  if (fio2 <= keys[0]) return FIO2_MAP[keys[0]];
+  if (fio2 >= keys[keys.length - 1]) return FIO2_MAP[keys[keys.length - 1]];
+  for (let i = 0; i < keys.length - 1; i++) {
+    const lo = keys[i], hi = keys[i + 1];
+    if (fio2 >= lo && fio2 <= hi) {
+      const r = (fio2 - lo) / (hi - lo);
+      return +(FIO2_MAP[lo] + r * (FIO2_MAP[hi] - FIO2_MAP[lo])).toFixed(1);
+    }
+  }
+  return 0;
+}
+
+// ── 1. 연속처치 타이머 ─────────────────────────────────────
+// 단가: 산소(원/L, 10L당 9원 → 원/L = 0.9), 나머지(원/시간)
+const TIMER_UNIT_PRICES = { '산소': 0.9, '인공호흡기': 150, 'CRRT': 300, '정주펌프': 50 };
+
+let _timerState = {}; // { cardId: { intervalId, startEpoch, flow } }
+
+function openAddTimerModal() {
+  document.getElementById('addTimerModal').style.display = 'flex';
+}
+function closeAddTimerModal() {
+  document.getElementById('addTimerModal').style.display = 'none';
+}
+
+function addTimerCard() {
+  const patientId = document.getElementById('timer-patient-id').value.trim();
+  const item = document.getElementById('timer-item-select').value;
+  const flow = parseFloat(document.getElementById('timer-flow').value) || 3;
+  if (!patientId) { alert('환자 ID를 입력하세요.'); return; }
+
+  const cardId = `tcard_${Date.now()}`;
+  const card = document.createElement('div');
+  card.id = cardId;
+  card.style.cssText = 'background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);padding:.75rem;text-align:center;';
+  card.innerHTML = `
+    <div style="font-weight:700;color:var(--primary,#3b82f6);margin-bottom:.2rem">${patientId}</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">${item}</div>
+    <div id="${cardId}-clock" style="font-family:'JetBrains Mono',monospace;font-size:1.4rem;margin-bottom:.5rem">00:00:00</div>
+    <div style="display:flex;gap:.35rem;justify-content:center">
+      <button class="upload-btn" style="font-size:.75rem;padding:.25rem .6rem" onclick="startTimer('${cardId}','${patientId}','${item}',${flow})">▶ 시작</button>
+      <button class="btn btn-ghost" style="font-size:.75rem;padding:.25rem .6rem;border:1px solid var(--err,#ef4444);color:var(--err,#ef4444)" onclick="stopTimer('${cardId}','${patientId}','${item}',${flow})">■ 종료</button>
+      <button class="btn btn-ghost" style="font-size:.75rem;padding:.25rem .5rem" onclick="removeTimerCard('${cardId}')">✕</button>
+    </div>`;
+  document.getElementById('timer-cards').appendChild(card);
+  closeAddTimerModal();
+  document.getElementById('timer-patient-id').value = '';
+}
+
+function startTimer(cardId, patientId, item, flow) {
+  if (_timerState[cardId]?.intervalId) return;
+  const start = Date.now();
+  _timerState[cardId] = { startEpoch: start, flow };
+  _timerState[cardId].intervalId = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    const el = document.getElementById(`${cardId}-clock`);
+    if (el) el.textContent = _formatHMS(elapsed);
+  }, 1000);
+}
+
+function stopTimer(cardId, patientId, item, flow) {
+  const state = _timerState[cardId];
+  if (!state?.intervalId) { alert('먼저 ▶ 시작 버튼을 눌러주세요.'); return; }
+  clearInterval(state.intervalId);
+
+  const endEpoch = Date.now();
+  const durationMin = (endEpoch - state.startEpoch) / 60000;
+  const startTime = new Date(state.startEpoch).toTimeString().slice(0, 5);
+  const endTime   = new Date(endEpoch).toTimeString().slice(0, 5);
+
+  let charge = 0;
+  if (item === '산소') {
+    const totalL = (flow || 3) * durationMin;
+    charge = Math.round(totalL * TIMER_UNIT_PRICES['산소']);
+  } else {
+    charge = Math.round((durationMin / 60) * (TIMER_UNIT_PRICES[item] || 0));
+  }
+
+  alert(`✅ 종료 요약\n환자: ${patientId}\n처치: ${item}\n${startTime} → ${endTime}\n경과: ${Math.round(durationMin)}분\n수가: ${charge.toLocaleString()}원`);
+
+  // 정산 목록
+  const tbody = document.getElementById('timer-settle-body');
+  if (tbody) {
+    const row = tbody.insertRow();
+    row.innerHTML = `<td>${patientId}</td><td>${item}</td><td>${startTime}</td><td>${endTime}</td><td>${Math.round(durationMin)}</td><td>${charge.toLocaleString()}</td>`;
+  }
+
+  // localStorage
+  const key = `timers_${_TODAY}`;
+  const arr = JSON.parse(localStorage.getItem(key) || '[]');
+  arr.push({ patientId, item, start: startTime, end: endTime, durationMin: Math.round(durationMin), charge });
+  localStorage.setItem(key, JSON.stringify(arr));
+
+  delete _timerState[cardId];
+}
+
+function removeTimerCard(cardId) {
+  if (_timerState[cardId]?.intervalId) clearInterval(_timerState[cardId].intervalId);
+  delete _timerState[cardId];
+  const el = document.getElementById(cardId);
+  if (el) el.remove();
+}
+
+// 오늘 타이머 기록 복원
+(function(){
+  const saved = JSON.parse(localStorage.getItem(`timers_${_TODAY}`) || '[]');
+  saved.forEach(t => {
+    const tbody = document.getElementById('timer-settle-body');
+    if (!tbody) return;
+    const row = tbody.insertRow();
+    row.innerHTML = `<td>${t.patientId}</td><td>${t.item}</td><td>${t.start}</td><td>${t.end}</td><td>${t.durationMin}</td><td>${t.charge.toLocaleString()}</td>`;
+  });
+})();
+
+// ── 2. 산소 수가 계산기 강화 ──────────────────────────────
+let _o2Mode = 'flow'; // 'flow' | 'fio2'
+
+function setO2Mode(mode) {
+  _o2Mode = mode;
+  const lbl = document.getElementById('o2-val-label');
+  if (lbl) lbl.textContent = mode === 'fio2' ? 'FiO₂ (%)' : 'Flow (L/min)';
+  document.getElementById('btn-mode-flow')?.classList.toggle('btn-ghost', mode !== 'flow');
+  document.getElementById('btn-mode-fio2')?.classList.toggle('btn-ghost', mode !== 'fio2');
+  document.querySelectorAll('.o2-value').forEach(el => {
+    el.placeholder = mode === 'fio2' ? 'FiO₂ (%)' : 'Flow (L/min)';
+  });
+}
+
+function addO2Row() {
+  const seg = document.createElement('div');
+  seg.className = 'o2-segment-row';
+  seg.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.4rem';
+  seg.innerHTML = `
+    <input class="form-input o2-value" type="number" step="any" placeholder="${_o2Mode === 'fio2' ? 'FiO₂ (%)' : 'Flow (L/min)'}" style="font-size:.82rem">
+    <input class="form-input o2-start" type="time" style="font-size:.82rem">
+    <input class="form-input o2-end"   type="time" style="font-size:.82rem">
+    <button class="btn btn-ghost" style="font-size:.8rem;padding:.2rem .5rem;color:var(--err,#ef4444)" onclick="removeO2Row(this)">✕</button>`;
+  document.getElementById('o2-segments').appendChild(seg);
+}
+
+function removeO2Row(btn) {
+  btn.closest('.o2-segment-row').remove();
+}
+
+function calcO2Enhanced() {
+  const rows = document.querySelectorAll('.o2-segment-row');
+  const segments = [];
+
+  rows.forEach(row => {
+    const rawVal   = parseFloat(row.querySelector('.o2-value').value);
+    const startStr = row.querySelector('.o2-start').value;
+    const endStr   = row.querySelector('.o2-end').value;
+    if (!rawVal || !startStr || !endStr) return;
+
+    const flow = _o2Mode === 'fio2' ? fio2ToFlow(rawVal) : rawVal;
+    const startMin = _timeToMinutes(startStr);
+    const endMin   = _timeToMinutes(endStr);
+    const durMin   = endMin > startMin ? endMin - startMin : endMin + 1440 - startMin;
+    const totalL   = flow * durMin;
+    const charge   = Math.round((totalL / 10) * 9);
+
+    segments.push({ label: `${startStr}~${endStr}`, flow, durMin, totalL: totalL.toFixed(1), charge });
+  });
+
+  if (!segments.length) { alert('구간을 입력해주세요.'); return; }
+
+  const tbody = document.getElementById('o2-result-body');
+  const tfoot = document.getElementById('o2-result-foot');
+  if (!tbody || !tfoot) return;
+  tbody.innerHTML = '';
+
+  let sumL = 0, sumCharge = 0;
+  segments.forEach((s, i) => {
+    sumL += parseFloat(s.totalL);
+    sumCharge += s.charge;
+    tbody.innerHTML += `<tr>
+      <td>${i + 1} (${s.label})</td>
+      <td>${s.flow}</td><td>${s.durMin}</td>
+      <td>${s.totalL}</td><td>${s.charge.toLocaleString()}</td></tr>`;
+  });
+
+  tfoot.innerHTML = `<tr><td colspan="3" style="font-weight:700">합계</td><td style="font-weight:700">${sumL.toFixed(1)}L</td><td style="font-weight:700">${sumCharge.toLocaleString()}원</td></tr>`;
+  document.getElementById('o2-result-area').style.display = 'block';
+  window._o2Summary = `산소 사용량: ${sumL.toFixed(1)}L / 수가: ${sumCharge.toLocaleString()}원`;
+}
+
+function copyO2Result() {
+  if (!window._o2Summary) return;
+  navigator.clipboard.writeText(window._o2Summary)
+    .then(() => alert('복사됨 ✅\n' + window._o2Summary));
+}
+
+// 초기 행 1개 추가
+addO2Row();
+
+// ── 3. 불일치 사례 수동 입력 ──────────────────────────────
+function toggleIncidentForm() {
+  const el = document.getElementById('incident-form-area');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveManualIncident() {
+  const item     = document.getElementById('inc-item')?.value.trim();
+  const cause    = document.getElementById('inc-cause')?.value;
+  const shift    = document.getElementById('inc-shift')?.value;
+  const priority = document.getElementById('inc-priority')?.value;
+  if (!item) { alert('항목명을 입력하세요.'); return; }
+
+  const incident = { id: Date.now(), item, cause, shift, priority, date: _TODAY, resolved: false };
+  const arr = JSON.parse(localStorage.getItem('incidents_manual') || '[]');
+  arr.push(incident);
+  localStorage.setItem('incidents_manual', JSON.stringify(arr));
+
+  _appendManualIncidentRow(incident);
+  toggleIncidentForm();
+  if (document.getElementById('inc-item')) document.getElementById('inc-item').value = '';
+}
+
+function _appendManualIncidentRow(inc) {
+  const tbody = document.getElementById('incidents-body');
+  if (!tbody) return;
+  const row = document.createElement('tr');
+  row.id = `inc-row-${inc.id}`;
+  const priColor = inc.priority === '높음' ? 'var(--err,#ef4444)' : inc.priority === '중간' ? 'var(--warn,#f59e0b)' : 'var(--ok,#22c55e)';
+  row.innerHTML = `
+    <td style="cursor:pointer;text-decoration:${inc.resolved ? 'line-through' : 'none'}" onclick="toggleResolved(${inc.id})">${inc.item}</td>
+    <td>${inc.cause}</td>
+    <td>${inc.shift}</td>
+    <td style="color:${priColor};font-weight:600">${inc.priority}</td>
+    <td>${inc.resolved ? '✅ 해결됨' : '⏳ 미처리'}</td>`;
+  tbody.appendChild(row);
+}
+
+function toggleResolved(id) {
+  const arr = JSON.parse(localStorage.getItem('incidents_manual') || '[]');
+  const inc = arr.find(i => i.id === id);
+  if (!inc) return;
+  inc.resolved = !inc.resolved;
+  localStorage.setItem('incidents_manual', JSON.stringify(arr));
+
+  const row = document.getElementById(`inc-row-${id}`);
+  if (!row) return;
+  row.cells[0].style.textDecoration = inc.resolved ? 'line-through' : 'none';
+  row.cells[4].textContent = inc.resolved ? '✅ 해결됨' : '⏳ 미처리';
+}
+
+// 페이지 로드 시 복원
+(function(){
+  const arr = JSON.parse(localStorage.getItem('incidents_manual') || '[]');
+  arr.forEach(inc => _appendManualIncidentRow(inc));
+})();
+
+// ── 4. CSV 정산표 다운로드 ────────────────────────────────
+function downloadSettlementCSV() {
+  const data = window._comparisonData;
+  if (!data || !data.length) { alert('비교 데이터가 없습니다. 먼저 파일을 비교해주세요.'); return; }
+
+  const shift   = prompt('교대를 입력하세요 (D / E / N):', 'D') || 'D';
+  const dateStr = _TODAY.replace(/-/g, '');
+  const filename = `정산표_${dateStr}_${shift}.csv`;
+
+  const header = ['품목명', '처방수량', '출고량', '차이', '상태'];
+  const rows = data.map(d => {
+    const diff = d.prescribed - d.dispensed;
+    const status = diff === 0 ? '일치' : diff < 0 ? '과다' : '누락';
+    return [d.item, d.prescribed, d.dispensed, diff, status].join(',');
+  });
+
+  const csv  = '﻿' + [header.join(','), ...rows].join('\n'); // BOM for Excel
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── 5. COST 입력 가이드 ───────────────────────────────────
+const GUIDE_DATA = {
+  '산소': {
+    when: '데이번 종료 전 or 이브닝 일괄 처리',
+    ocs: 'O2 inhalation (산소흡입)',
+    tips: ['Flow 변경 시마다 시작 시각 기록 필수', '이브닝에 구간별 합산 후 한 번에 입력', 'Nasal cannula ↔ 마스크 변경 시 처치 중단 후 재시작']
+  },
+  '인공호흡기': {
+    when: '이브닝 일괄 (FiO₂ 변경 시 그 시점에 끊고 재개)',
+    ocs: 'Mechanical ventilation (기계환기)',
+    tips: ['FiO₂ 변경 전 반드시 기존 오더 종료', 'SIMV→PS 모드 변경도 오더 구분', '발관 시 즉시 종료 입력']
+  },
+  'CRRT': {
+    when: '이브닝 일괄 or 회로 교환 시점에 끊고 재개',
+    ocs: 'CRRT (지속성신대체요법)',
+    tips: ['회로 응고로 중단 시 중단 시각 즉시 기록', '재개 시 새 오더로 시작', '24시간 연속 가동도 자정에 끊고 재개']
+  },
+  '지속정주': {
+    when: '속도 변경 시 or 교대 종료 시',
+    ocs: 'Continuous IV infusion',
+    tips: ['속도(mL/h) 변경 시 이전 오더 종료', '동일 약물이라도 농도 변경 시 새 오더', '펌프 알람으로 중단된 경우 중단 시각 기록']
+  },
+  '드레싱': {
+    when: '처치 직후 즉시 입력',
+    ocs: 'Dressing change',
+    tips: ['소독제·거즈 종류 변경 시 별도 항목으로', '응급 처치로 지연됐으면 교대 전 일괄 입력', '사이즈(소/중/대) 정확히 선택']
+  },
+  '수혈': {
+    when: '수혈 시작 즉시 + 완료 시 종료',
+    ocs: 'Blood transfusion',
+    tips: ['혈액 백 번호 기록 필수', '부작용 발생 시 중단 후 별도 기록', 'FFP/RBC/PLT 각각 별도 오더']
+  }
+};
+
+let _guideOpen = false;
+
+function toggleGuidePanel() {
+  _guideOpen = !_guideOpen;
+  const panel = document.getElementById('guide-panel');
+  if (!panel) return;
+  panel.style.display = _guideOpen ? 'block' : 'none';
+  if (_guideOpen) renderGuideTab('산소');
+}
+
+function renderGuideTab(key) {
+  const d = GUIDE_DATA[key];
+  if (!d) return;
+  document.querySelectorAll('.guide-tab').forEach(t => {
+    const isActive = t.dataset.key === key;
+    t.className = isActive ? 'guide-tab upload-btn' : 'guide-tab btn btn-ghost';
+    t.style.cssText = 'font-size:.75rem;padding:.25rem .6rem';
+  });
+  const tips = d.tips.map(t => `<li style="margin-bottom:.2rem">${t}</li>`).join('');
+  const gc = document.getElementById('guide-content');
+  if (!gc) return;
+  gc.innerHTML = `
+    <div style="margin-bottom:.5rem"><span style="background:var(--info,#0ea5e9);color:#fff;border-radius:4px;padding:.1rem .4rem;font-size:.73rem">언제 끊는가</span>
+      <span style="margin-left:.4rem">${d.when}</span></div>
+    <div style="margin-bottom:.5rem"><span style="background:var(--muted,#6b7280);color:#fff;border-radius:4px;padding:.1rem .4rem;font-size:.73rem">OCS 코드</span>
+      <span style="margin-left:.4rem">${d.ocs}</span></div>
+    <div><span style="background:var(--warn,#f59e0b);color:#fff;border-radius:4px;padding:.1rem .4rem;font-size:.73rem">자주 틀리는 케이스</span>
+      <ul style="margin:.4rem 0 0 1rem;padding:0">${tips}</ul></div>`;
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('guide-tab')) {
+    renderGuideTab(e.target.dataset.key);
+  }
+});

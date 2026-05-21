@@ -330,7 +330,34 @@
   </div>
   <div class="bot-row">
     <div class="card">
-      <div class="card-hd"><div><div class="card-title">반영 지연 / 불일치 사례</div><div class="card-sub">지연·불일치 원인 분류</div></div></div>
+      <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="card-title">반영 지연 / 불일치 사례</div><div class="card-sub">지연·불일치 원인 분류</div></div>
+        <button class="btn btn-ghost" style="font-size:.78rem;padding:.25rem .6rem;border:1px solid var(--warn,#f59e0b);color:var(--warn,#f59e0b)" onclick="toggleIncidentForm()">+ 직접 입력</button>
+      </div>
+      <!-- 수동 입력 폼 (토글) -->
+      <div id="incident-form-area" style="display:none;background:var(--surf2);border-radius:var(--r-sm);padding:.75rem;margin-bottom:.75rem">
+        <div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr auto;gap:.5rem;align-items:end">
+          <input id="inc-item" class="form-input" placeholder="항목명" style="font-size:.82rem">
+          <select id="inc-cause" class="form-input" style="font-size:.82rem">
+            <option value="입력누락">입력누락</option>
+            <option value="FiO₂미변경">FiO₂미변경</option>
+            <option value="Cost미처리">Cost미처리</option>
+            <option value="출고불일치">출고불일치</option>
+            <option value="기타">기타</option>
+          </select>
+          <select id="inc-shift" class="form-input" style="font-size:.82rem">
+            <option value="D">D (데이)</option>
+            <option value="E">E (이브닝)</option>
+            <option value="N">N (나이트)</option>
+          </select>
+          <select id="inc-priority" class="form-input" style="font-size:.82rem">
+            <option value="높음">높음</option>
+            <option value="중간">중간</option>
+            <option value="낮음">낮음</option>
+          </select>
+          <button class="upload-btn" style="font-size:.82rem;padding:.35rem .7rem;white-space:nowrap" onclick="saveManualIncident()">저장</button>
+        </div>
+      </div>
       <div style="overflow-x:auto">
         <table id="incidents-table">
           <thead><tr><th>항목</th><th>지연·불일치 원인</th><th>교대</th><th>우선순위</th><th>상태</th></tr></thead>
@@ -355,7 +382,111 @@
       <div style="color:var(--muted);font-size:.8rem;padding:.75rem;text-align:center">파일 확정 후 통계가 집계됩니다.</div>
     </div>
   </div>
+
+  <!-- ── Phase 4: 연속처치 타이머 ──────────────────────── -->
+  <div class="card" id="timer-section">
+    <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="card-title">⏱ 연속처치 타이머</div><div class="card-sub">환자별 처치 시작·종료 시간 기록 및 수가 자동 계산</div></div>
+      <button class="upload-btn" style="padding:.35rem .8rem;font-size:.8rem" onclick="openAddTimerModal()">+ 환자 추가</button>
+    </div>
+    <div id="timer-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem"></div>
+    <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">📋 오늘의 정산 목록</div>
+    <div style="overflow-x:auto">
+      <table id="incidents-table" style="width:100%">
+        <thead><tr><th>환자ID</th><th>처치</th><th>시작</th><th>종료</th><th>총 분</th><th>수가(원)</th></tr></thead>
+        <tbody id="timer-settle-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 타이머 추가 모달 -->
+  <div id="addTimerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+    <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(340px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-weight:700;margin-bottom:1rem">환자 추가</div>
+      <input id="timer-patient-id" class="form-input" placeholder="환자 ID (예: 101호)" style="margin-bottom:.5rem">
+      <select id="timer-item-select" class="form-input" style="margin-bottom:.5rem">
+        <option value="산소">산소</option>
+        <option value="인공호흡기">인공호흡기</option>
+        <option value="CRRT">CRRT</option>
+        <option value="정주펌프">정주펌프</option>
+      </select>
+      <input id="timer-flow" class="form-input" placeholder="Flow L/min (산소만 해당)" type="number" step="0.5" style="margin-bottom:1rem">
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="closeAddTimerModal()">취소</button>
+        <button class="upload-btn" onclick="addTimerCard()">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Phase 4: 산소 수가 계산기 (강화) ──────────────── -->
+  <div class="card" id="oxygen-calc-enhanced">
+    <div class="card-hd">
+      <div><div class="card-title">🧮 산소 수가 계산기 (구간 합산)</div><div class="card-sub">Flow 또는 FiO₂ 기반 구간별 수가 계산</div></div>
+    </div>
+    <!-- 모드 토글 -->
+    <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+      <button id="btn-mode-flow" class="upload-btn" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('flow')">Flow (L/min)</button>
+      <button id="btn-mode-fio2" class="btn btn-ghost" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('fio2')">FiO₂ (%)</button>
+    </div>
+    <!-- 헤더 라벨 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.25rem;font-size:.75rem;color:var(--muted)">
+      <span id="o2-val-label">Flow (L/min)</span><span>시작 시간</span><span>종료 시간</span><span></span>
+    </div>
+    <!-- 구간 입력 -->
+    <div id="o2-segments"></div>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem;margin-bottom:.75rem">
+      <button class="btn btn-ghost" style="font-size:.8rem" onclick="addO2Row()">+ 구간 추가</button>
+      <button class="upload-btn" style="font-size:.8rem;padding:.3rem .8rem" onclick="calcO2Enhanced()">▶ 계산</button>
+    </div>
+    <!-- 결과 -->
+    <div id="o2-result-area" style="display:none">
+      <div style="overflow-x:auto">
+        <table style="width:100%;font-size:.82rem">
+          <thead><tr><th>구간</th><th>Flow(L/min)</th><th>시간(분)</th><th>사용량(L)</th><th>수가(원)</th></tr></thead>
+          <tbody id="o2-result-body"></tbody>
+          <tfoot id="o2-result-foot" style="font-weight:700;background:var(--primary-soft,#e8f0fe)"></tfoot>
+        </table>
+      </div>
+      <button class="btn btn-ghost" style="margin-top:.5rem;font-size:.8rem" onclick="copyO2Result()">📋 합계 복사</button>
+    </div>
+  </div>
+
+  <!-- ── Phase 4: 불일치 사례 수동 입력 버튼 (incidents 카드 위) ── -->
+  <!-- (incidents 섹션 내에 삽입됨 — JS로 DOM 주입) -->
+
+  <!-- ── Phase 4: CSV 다운로드 버튼 -->
+  <div id="csv-download-area" style="display:none;margin-top:.5rem">
+    <button class="upload-btn" style="background:var(--ok,#22c55e);font-size:.82rem;padding:.4rem .9rem" onclick="downloadSettlementCSV()">📥 정산표 다운로드</button>
+  </div>
+
 </main>
+
+<!-- ── Phase 4: COST 입력 가이드 고정 버튼 ─────────────── -->
+<div id="guide-fab" style="position:fixed;bottom:24px;right:24px;z-index:9999">
+  <button class="upload-btn" style="border-radius:20px;padding:.5rem 1rem;font-size:.83rem;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="toggleGuidePanel()">💡 COST 입력 가이드</button>
+</div>
+
+<!-- 가이드 슬라이드업 패널 -->
+<div id="guide-panel" style="
+  position:fixed;bottom:70px;right:24px;width:min(380px,90vw);
+  max-height:70vh;overflow-y:auto;
+  background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);
+  box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:9998;
+  display:none;padding:1rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+    <strong style="font-size:.9rem">처치 유형별 COST 입력 가이드</strong>
+    <button onclick="toggleGuidePanel()" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted)">✕</button>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.75rem">
+    <button class="guide-tab upload-btn" data-key="산소" style="font-size:.75rem;padding:.25rem .6rem">산소</button>
+    <button class="guide-tab btn btn-ghost" data-key="인공호흡기" style="font-size:.75rem;padding:.25rem .6rem">인공호흡기</button>
+    <button class="guide-tab btn btn-ghost" data-key="CRRT" style="font-size:.75rem;padding:.25rem .6rem">CRRT</button>
+    <button class="guide-tab btn btn-ghost" data-key="지속정주" style="font-size:.75rem;padding:.25rem .6rem">지속정주</button>
+    <button class="guide-tab btn btn-ghost" data-key="드레싱" style="font-size:.75rem;padding:.25rem .6rem">드레싱</button>
+    <button class="guide-tab btn btn-ghost" data-key="수혈" style="font-size:.75rem;padding:.25rem .6rem">수혈</button>
+  </div>
+  <div id="guide-content" style="font-size:.82rem;line-height:1.6"></div>
+</div>
 </div>
 
 <!-- ── 듀티 마감 알람 모달 ──────────────────────────────── -->
