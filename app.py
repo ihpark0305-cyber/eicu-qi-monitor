@@ -115,6 +115,14 @@ def report():
 def settings():
     return render_template("settings.html")
 
+@app.route("/effects")
+def effects():
+    return render_template("effects.html")
+
+@app.route("/demo")
+def demo():
+    return render_template("demo.html")
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)
