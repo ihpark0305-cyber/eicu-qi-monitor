@@ -25,8 +25,11 @@ def calculate_oxygen_charge(flow_records):
     total_minutes = 0
 
     for i in range(len(flow_records) - 1):
-        t1 = datetime.strptime(flow_records[i]["time"], "%H:%M")
-        t2 = datetime.strptime(flow_records[i + 1]["time"], "%H:%M")
+        try:
+            t1 = datetime.strptime(flow_records[i]["time"], "%H:%M")
+            t2 = datetime.strptime(flow_records[i + 1]["time"], "%H:%M")
+        except (ValueError, KeyError):
+            continue
         minutes = int((t2 - t1).seconds / 60)
         hours = minutes / 60
         flow = flow_records[i]["flow"]

@@ -282,7 +282,7 @@ function renderDelayTable(items) {
     const itemName = i.item || i['그룹'] || '-';
     const cause = i.cause ||
       (i['차이'] !== undefined
-        ? `불출 ${i['불출_출고량']}건 / 처방 ${i['처방_실수량']}건 (차이 ${i['차이'] > 0 ? '+' : ''}${i['차이']})`
+        ? `불출 ${i['불출_출고량'] ?? '-'}건 / 처방 ${i['처방_실수량'] ?? '-'}건 (차이 ${i['차이'] > 0 ? '+' : ''}${i['차이']})`
         : '-');
     const eveningBadge = i.highlight === 'yellow'
       ? '<span class="tag tag-y" style="margin-left:.25rem">이브닝cost</span>' : '';
@@ -674,11 +674,13 @@ function renderOcrTable(items, manualMode) {
   window._ocrOriginal = items.map(r => ({...r}));
   window._editCount   = 0;
 
-  const tbody = document.getElementById('ocr-tbody');
+  const oldTbody = document.getElementById('ocr-tbody');
+  const tbody = oldTbody.cloneNode(false);
+  oldTbody.replaceWith(tbody);
   tbody.innerHTML = items.map((r, i) => _ocrRowHtml(i, r)).join('');
   if (manualMode || items.length === 0) _addEmptyOcrRow();
 
-  tbody.addEventListener('input', _onOcrEdit, { once: false });
+  tbody.addEventListener('input', _onOcrEdit);
   document.getElementById('ocr-result-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
@@ -806,7 +808,8 @@ function confirmOcrData() {
   // 경고 beep
   if (delay.length > 0 || overstock.length > 0) playBeep(660, 0.18);
 
-  document.getElementById('ocr-status').textContent =
+  const _ocrStatusEl = document.getElementById('ocr-status');
+  if (_ocrStatusEl) _ocrStatusEl.textContent =
     `✓ ${rows.length}건 확정 · 지연/미처리 ${delay.length}건 · 이브닝 정산 ${eveningItems.length}건`;
   document.getElementById('last-updated').textContent =
     '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
@@ -1330,6 +1333,10 @@ function stopTimer(cardId, patientId, item, flow) {
   if (!state?.intervalId) { alert('먼저 ▶ 시작 버튼을 눌러주세요.'); return; }
   clearInterval(state.intervalId);
 
+  // 단가를 설정에서 동적으로 읽어오기
+  const prices = (typeof _getUnitPrices === 'function') ? _getUnitPrices() : {};
+  Object.assign(TIMER_UNIT_PRICES, prices);
+
   const endEpoch = Date.now();
   const durationMin = (endEpoch - state.startEpoch) / 60000;
   const startTime = new Date(state.startEpoch).toTimeString().slice(0, 5);
@@ -1653,15 +1660,6 @@ function _getUnitPrices() {
   };
 }
 
-// stopTimer에서 TIMER_UNIT_PRICES 대신 _getUnitPrices() 사용 (동적 override)
-// 원래 stopTimer 내에서 TIMER_UNIT_PRICES를 읽는 부분을 아래 래퍼로 대체
-const _origStopTimer = stopTimer;
-window.stopTimer = function(cardId, patientId, item, flow) {
-  // 단가를 설정에서 동적으로 읽어오기 위해 TIMER_UNIT_PRICES를 일시 덮어씀
-  const prices = _getUnitPrices();
-  Object.assign(TIMER_UNIT_PRICES, prices);
-  _origStopTimer(cardId, patientId, item, flow);
-};
 
 // ── 8. 환자별 처치 요약 카드 인쇄 ───────────────────────
 function printHandoverCards() {
@@ -1843,3 +1841,27 @@ function renderTwoBin() {
 
 // 페이지 로드 시 Two-Bin 렌더
 renderTwoBin();
+
+// ── 탭 전환 (반영 지연율 / 입력 기준표) ────────────────────
+function switchTypeTab(tab) {
+  ['delay','criteria'].forEach(t => {
+    const btn   = document.getElementById('tab-' + t);
+    const panel = document.getElementById('panel-' + t);
+    const active = t === tab;
+    if (btn)   { btn.classList.toggle('active', active); }
+    if (panel) { panel.style.display = active ? '' : 'none'; }
+  });
+}
+
+// ── localStorage 오래된 키 정리 (7일 초과) ─────────────────
+(function _cleanOldStorage() {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const prefixes = ['upload_','checklist_','timers_','daily_summary_'];
+  Object.keys(localStorage).forEach(key => {
+    const matched = prefixes.some(p => key.startsWith(p));
+    if (!matched) return;
+    const datePart = key.replace(/^[^_]+_/, '');
+    const d = new Date(datePart);
+    if (!isNaN(d) && d.getTime() < cutoff) localStorage.removeItem(key);
+  });
+})();
