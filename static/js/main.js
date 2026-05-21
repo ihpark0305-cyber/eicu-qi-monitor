@@ -379,6 +379,22 @@ async function handleUpload() {
   document.getElementById('last-updated').textContent =
     '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
   showResultBadges(d);
+
+  // 업로드 내역 저장
+  const _today = new Date().toISOString().slice(0,10);
+  const _csvKey = `upload_${d.date||_today}_ganhocheo_csv`;
+  const _csvRows = [...(d.delay_items||[]), ...(d.missing_items||[])].map(r => ({
+    item: r.item||'', order_qty: r.order_qty||0, delivered_qty: r.delivered_qty||0,
+    undelivered_qty: r.undelivered_qty||0, note: r.cause||''
+  }));
+  localStorage.setItem(_csvKey, JSON.stringify({
+    meta: { date: d.date||_today, doctype: 'ganhocheo', duty: 'csv' },
+    rows: _csvRows,
+    confirmedAt: new Date().toISOString(),
+    stats: { total: d.total_items||0, delay: (d.delay_items||[]).length,
+             overstock: 0, evening: 0 }
+  }));
+  renderUploadHistory();
 }
 
 async function handleCompare() {
@@ -421,6 +437,22 @@ async function handleCompare() {
   document.getElementById('last-updated').textContent =
     '최종 업데이트: ' + new Date().toLocaleString('ko-KR');
   showResultBadges(d);
+
+  // 업로드 내역 저장
+  const _today2 = new Date().toISOString().slice(0,10);
+  const _cmpKey = `upload_${d.date||_today2}_compare_csv`;
+  const _cmpRows = (d.diff_items||[]).map(r => ({
+    item: r.item||'', order_qty: r.order_qty||r.prescribed||0,
+    delivered_qty: r.delivered_qty||r.dispensed||0,
+    undelivered_qty: r.diff||0, note: r.status||''
+  }));
+  localStorage.setItem(_cmpKey, JSON.stringify({
+    meta: { date: d.date||_today2, doctype: 'compare', duty: 'csv' },
+    rows: _cmpRows,
+    confirmedAt: new Date().toISOString(),
+    stats: { total: _cmpRows.length, delay: d.diff_count||0, overstock: 0, evening: 0 }
+  }));
+  renderUploadHistory();
 }
 
 /* ─── Checklist (localStorage) ───────────────────────────── */
@@ -766,8 +798,9 @@ function confirmOcrData() {
              overstock: overstock.length, evening: eveningItems.length }
   }));
 
-  // Top5 갱신
+  // Top5 갱신 + 내역 갱신
   buildTop5();
+  renderUploadHistory();
 
   // 경고 beep
   if (delay.length > 0 || overstock.length > 0) playBeep(660, 0.18);
@@ -1013,6 +1046,111 @@ function buildTop5() {
   }).join('');
 }
 
+/* ─── 업로드 내역 조회/삭제 ─────────────────────────────── */
+function renderUploadHistory() {
+  const keys = Object.keys(localStorage)
+    .filter(k => k.startsWith('upload_'))
+    .sort().reverse();
+
+  const list  = document.getElementById('upload-history-list');
+  const empty = document.getElementById('upload-history-empty');
+  const sub   = document.getElementById('history-sub');
+  if (!list) return;
+
+  if (!keys.length) {
+    list.innerHTML  = '';
+    list.style.display  = 'none';
+    if (empty) empty.style.display = 'block';
+    if (sub)   sub.textContent = '업로드 내역 없음';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  list.style.display = 'flex';
+  if (sub) sub.textContent = `총 ${keys.length}건 저장됨`;
+
+  const DOCTYPE_LABEL = { bulchul:'불출증', ganhocheo:'간호처방집계', compare:'비교분석', other:'기타' };
+  const DUTY_LABEL    = { day:'Day', evening:'Evening', night:'Night', D:'Day', E:'Evening', N:'Night' };
+
+  list.innerHTML = keys.map(key => {
+    // key = upload_DATE_DOCTYPE_DUTY
+    const parts = key.split('_');
+    const date    = parts[1] || '';
+    const doctype = parts[2] || '';
+    const duty    = parts[3] || '';
+
+    let rowCount = 0, confirmedAt = '';
+    try {
+      const d = JSON.parse(localStorage.getItem(key) || '{}');
+      rowCount    = d.rows?.length || d.stats?.total || 0;
+      confirmedAt = d.confirmedAt ? new Date(d.confirmedAt).toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+    } catch(e) {}
+
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:var(--surf2);border-radius:var(--r-sm);gap:.5rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0">
+        <span style="font-size:.72rem;font-weight:700;background:var(--pri-hl);color:var(--pri);padding:2px 8px;border-radius:99px;white-space:nowrap">${date}</span>
+        <span style="font-size:.78rem;font-weight:600">${DOCTYPE_LABEL[doctype]||doctype}</span>
+        <span style="font-size:.73rem;color:var(--muted)">${DUTY_LABEL[duty]||duty}</span>
+        <span style="font-size:.72rem;color:var(--faint);font-family:var(--fm)">${rowCount}건${confirmedAt?' · '+confirmedAt:''}</span>
+      </div>
+      <div style="display:flex;gap:.35rem;flex-shrink:0">
+        <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem" onclick="viewUploadDetail('${key}')">🔍 조회</button>
+        <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem;color:var(--err);border-color:var(--err)" onclick="deleteUploadRecord('${key}')">🗑 삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewUploadDetail(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) { alert('데이터를 찾을 수 없습니다.'); return; }
+
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { alert('데이터 파싱 오류'); return; }
+
+  const parts = key.split('_');
+  const DOCTYPE_LABEL = { bulchul:'불출증', ganhocheo:'간호처방집계', compare:'비교분석', other:'기타' };
+  const DUTY_LABEL    = { day:'Day', evening:'Evening', night:'Night' };
+
+  document.getElementById('hv-title').textContent =
+    `${parts[1]} · ${DOCTYPE_LABEL[parts[2]]||parts[2]} · ${DUTY_LABEL[parts[3]]||parts[3]}`;
+  document.getElementById('hv-meta').textContent =
+    `총 ${data.rows?.length||0}건${data.confirmedAt?' · 확정: '+new Date(data.confirmedAt).toLocaleString('ko-KR'):''}${data.meta?.memo?' · 메모: '+data.meta.memo:''}`;
+
+  const tbody = document.getElementById('hv-tbody');
+  const rows  = data.rows || [];
+  tbody.innerHTML = rows.length
+    ? rows.map(r => `<tr>
+        <td>${r.item||''}</td><td>${r.unit||''}</td>
+        <td style="text-align:right">${r.order_qty??''}</td>
+        <td style="text-align:right">${r.delivered_qty??''}</td>
+        <td style="text-align:right;color:${r.undelivered_qty>0?'var(--err)':'inherit'}">${r.undelivered_qty??''}</td>
+        <td style="text-align:right">${r.actual_qty??''}</td>
+        <td style="font-size:.75rem;color:var(--muted)">${r.note||''}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem">행 데이터 없음</td></tr>';
+
+  document.getElementById('historyViewModal').style.display = 'flex';
+}
+
+function deleteUploadRecord(key) {
+  if (!confirm(`이 업로드 기록을 삭제하시겠습니까?\n${key}`)) return;
+  localStorage.removeItem(key);
+  renderUploadHistory();
+  buildTop5();
+  showToast('업로드 기록이 삭제되었습니다.', 'ok', 2500);
+}
+
+function clearAllUploadsFromDashboard() {
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('upload_'));
+  if (!keys.length) { alert('삭제할 업로드 기록이 없습니다.'); return; }
+  if (!confirm(`업로드 기록 ${keys.length}건을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+  keys.forEach(k => localStorage.removeItem(k));
+  renderUploadHistory();
+  buildTop5();
+  initEmptyState();
+  showToast(`${keys.length}건 삭제 완료`, 'warn', 3000);
+}
+
 /* ─── Phase 2-E: Handover Memo ──────────────────────────── */
 const HANDOVER_KEY = 'handover_memos';
 
@@ -1082,6 +1220,7 @@ renderFlowTable();
 renderHandoverBanner();
 buildTop5();
 renderMaxList();
+renderUploadHistory();
 
 // meta-date 기본값 오늘
 const _md = document.getElementById('meta-date');
