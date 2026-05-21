@@ -122,6 +122,7 @@ document.querySelectorAll('.ptab').forEach(tab=>{
   tab.addEventListener('click',()=>{
     document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
+    loadTrend(tab.dataset.period);
   });
 });
 
@@ -874,8 +875,13 @@ function checkDutyAlarm() {
 
   Object.entries(alarmTimes).forEach(([duty, alarmTime]) => {
     if (hhmm !== alarmTime) return;
-    const confirmed = ['bulchul','ganhocheo','other'].some(doc =>
-      localStorage.getItem(`upload_${today}_${doc}_${duty.toLowerCase()}`)
+    // duty: 'D'/'E'/'N' → short + full name 모두 체크 (OCR은 day/evening/night, CSV는 csv)
+    const dutyVariants = {
+      D: ['d','day'], E: ['e','evening'], N: ['n','night']
+    }[duty] || [duty.toLowerCase()];
+    const confirmed = ['bulchul','ganhocheo','other','compare'].some(doc =>
+      dutyVariants.some(dv => localStorage.getItem(`upload_${today}_${doc}_${dv}`)) ||
+      localStorage.getItem(`upload_${today}_${doc}_csv`)
     );
     if (!confirmed) {
       const { timers, pendingChk } = _getPendingSummary();
@@ -1010,21 +1016,19 @@ function openMaxSettings() {
 function buildTop5() {
   const counts = {};
   const today  = new Date();
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(today); d.setDate(d.getDate() - i);
-    const ds = d.toISOString().slice(0,10);
-    ['bulchul','ganhocheo','other'].forEach(doc =>
-      ['day','evening','night'].forEach(duty => {
-        const raw = localStorage.getItem(`upload_${ds}_${doc}_${duty}`);
-        if (!raw) return;
-        try {
-          const { rows = [] } = JSON.parse(raw);
-          rows.filter(r => r.undelivered_qty > 0 || r.actual_qty < r.order_qty)
-              .forEach(r => { if(r.item) counts[r.item] = (counts[r.item]||0)+1; });
-        } catch(e) {}
-      })
-    );
-  }
+  // 최근 7일 모든 upload_* 키 스캔
+  const allUploadKeys = Object.keys(localStorage).filter(k => k.startsWith('upload_'));
+  const cutoff = new Date(today); cutoff.setDate(cutoff.getDate() - 7);
+  allUploadKeys.forEach(key => {
+    try {
+      const parts = key.split('_');
+      const ds = parts[1];
+      if (!ds || new Date(ds) < cutoff) return;
+      const { rows = [] } = JSON.parse(localStorage.getItem(key) || '{}');
+      rows.filter(r => r.undelivered_qty > 0 || (r.order_qty > 0 && r.actual_qty < r.order_qty))
+          .forEach(r => { if(r.item) counts[r.item] = (counts[r.item]||0)+1; });
+    } catch(e) {}
+  });
   const top5   = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCnt = top5[0]?.[1] || 1;
   const panel  = document.getElementById('top5-list');
@@ -1215,6 +1219,7 @@ function openPrintLabels() {
 })();
 
 initEmptyState();
+loadTrend('weekly');
 loadChecklistLocal();
 renderFlowTable();
 renderHandoverBanner();
@@ -1419,7 +1424,8 @@ function calcO2Enhanced() {
     const endMin   = _timeToMinutes(endStr);
     const durMin   = endMin > startMin ? endMin - startMin : endMin + 1440 - startMin;
     const totalL   = flow * durMin;
-    const charge   = Math.round((totalL / 10) * 9);
+    const _o2Price = loadAppSettings().o2_price || 9;
+    const charge   = Math.round((totalL / 10) * _o2Price);
 
     segments.push({ label: `${startStr}~${endStr}`, flow, durMin, totalL: totalL.toFixed(1), charge });
   });
