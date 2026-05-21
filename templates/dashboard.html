@@ -39,6 +39,9 @@
   <div class="nav-sec">관리</div>
   <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>체크리스트</div>
   <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
+  <a class="nav-item" href="/settings" style="position:relative"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>설정
+    <span id="nav-incident-badge" style="display:none;position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:var(--err);color:#fff;font-size:.6rem;font-weight:700;border-radius:99px;padding:1px 5px;min-width:16px;text-align:center"></span>
+  </a>
 </nav>
 <main class="main">
   <!-- ── 인수인계 포스트잇 배너 ──────────────────────────── -->
@@ -383,6 +386,53 @@
     </div>
   </div>
 
+  <!-- ── Phase 4: Two-Bin 재고 현황판 ────────────────────── -->
+  <div class="card" id="twobin-section">
+    <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+      <div><div class="card-title">📦 Two-Bin 비처방성 물품 재고 현황</div><div class="card-sub">Bin A(주간 사용분) / Bin B(비상 재고) 상태 관리</div></div>
+      <button class="upload-btn" style="font-size:.78rem;padding:.3rem .7rem" onclick="openAddTwoBinModal()">+ 품목 추가</button>
+    </div>
+    <div id="twobin-table-wrap" style="overflow-x:auto">
+      <table style="width:100%;font-size:.82rem">
+        <thead><tr>
+          <th>품목명</th><th>단위</th>
+          <th>Bin A<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">주간소요</span></th>
+          <th>Bin B<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">비상재고</span></th>
+          <th>상태</th><th>보충 요청</th><th>조작</th>
+        </tr></thead>
+        <tbody id="twobin-body"></tbody>
+      </table>
+    </div>
+    <div id="twobin-empty" style="text-align:center;color:var(--muted);font-size:.82rem;padding:1.5rem">
+      + 품목 추가 버튼으로 비처방성 물품을 등록하세요
+    </div>
+  </div>
+
+  <!-- Two-Bin 추가 모달 -->
+  <div id="twoBinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+    <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(380px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-weight:700;margin-bottom:1rem">📦 품목 추가</div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <input id="tb-name" class="form-input" placeholder="품목명 (예: 거즈 10x10)">
+        <input id="tb-unit" class="form-input" placeholder="단위 (예: 봉, 개, 박스)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+          <div>
+            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin A MAX</div>
+            <input id="tb-maxA" class="form-input" type="number" min="0" placeholder="최대 수량">
+          </div>
+          <div>
+            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin B MAX</div>
+            <input id="tb-maxB" class="form-input" type="number" min="0" placeholder="비상 수량">
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+        <button class="btn btn-ghost" onclick="closeTwoBinModal()">취소</button>
+        <button class="upload-btn" onclick="addTwoBinItem()">추가</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Phase 4: 연속처치 타이머 ──────────────────────── -->
   <div class="card" id="timer-section">
     <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
@@ -390,7 +440,10 @@
       <button class="upload-btn" style="padding:.35rem .8rem;font-size:.8rem" onclick="openAddTimerModal()">+ 환자 추가</button>
     </div>
     <div id="timer-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem"></div>
-    <div style="font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:.5rem">📋 오늘의 정산 목록</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-size:.8rem;font-weight:600;color:var(--muted)">📋 오늘의 정산 목록</div>
+      <button class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="printHandoverCards()">🖨️ 인수인계 카드 인쇄</button>
+    </div>
     <div style="overflow-x:auto">
       <table id="incidents-table" style="width:100%">
         <thead><tr><th>환자ID</th><th>처치</th><th>시작</th><th>종료</th><th>총 분</th><th>수가(원)</th></tr></thead>
@@ -460,6 +513,20 @@
   </div>
 
 </main>
+
+<!-- ── Phase 4: 토스트 알림 컨테이너 ──────────────────────── -->
+<div id="toast-container" style="position:fixed;top:60px;right:16px;z-index:9990;display:flex;flex-direction:column;gap:.5rem;pointer-events:none"></div>
+
+<!-- ── Phase 4: 인수인계 카드 인쇄 영역 (print only) ─────── -->
+<div id="handover-print-area" style="display:none">
+  <div style="padding:1.5rem;font-family:'Noto Sans KR',sans-serif">
+    <h2 style="font-size:1.1rem;margin-bottom:.5rem">📋 연속처치 인수인계 요약</h2>
+    <div id="handover-print-content"></div>
+    <div style="margin-top:1rem;font-size:.75rem;color:#666">출력일시: <span id="handover-print-date"></span></div>
+  </div>
+</div>
+
+<!-- 인수인계 카드 출력 버튼 (타이머 정산 목록 옆에 표시) -->
 
 <!-- ── Phase 4: COST 입력 가이드 고정 버튼 ─────────────── -->
 <div id="guide-fab" style="position:fixed;bottom:24px;right:24px;z-index:9999">

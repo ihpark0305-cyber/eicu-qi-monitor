@@ -112,6 +112,7 @@ tbody td:first-child{font-weight:500;color:var(--txt)}
 .upload-zone{background:var(--surf);border:1.5px dashed rgba(59,130,246,.35);border-radius:var(--r-md);padding:.875rem 1.25rem;margin-bottom:1rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap}
 .upload-label{font-size:.8rem;font-weight:600;margin-bottom:.35rem}
 .upload-sub{font-size:.7rem;color:var(--muted);margin-left:.35rem;font-weight:400}
+.form-input{width:100%;padding:.375rem .6rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:var(--txt);font:inherit;font-size:.83rem;outline:none;transition:border-color var(--tr)}.form-input:focus{border-color:var(--pri)}
 .upload-btn{background:var(--pri);color:#fff;border:none;border-radius:6px;padding:.45rem 1rem;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
 .upload-btn:hover{opacity:.85}.upload-btn.ok{background:var(--ok)}
 #upload-status{font-size:.75rem;color:var(--muted);width:100%;padding-top:.25rem}
@@ -131,6 +132,7 @@ tbody td:first-child{font-weight:500;color:var(--txt)}
 .label-card .label-max{font-size:1.5rem;font-weight:800;margin:.375rem 0;color:#111}
 .label-card .label-warn{font-size:.7rem;color:#dc2626;border-top:1px solid #ccc;padding-top:.375rem;margin-top:.375rem}
 @media print{
-  body > *:not(#print-label-area){display:none!important}
+  body > *:not(#print-label-area):not(#handover-print-area){display:none!important}
   #print-label-area{display:grid!important;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1.5rem}
+  #handover-print-area{display:block!important}
 }

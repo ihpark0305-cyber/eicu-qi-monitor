@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>설정 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#3b82f6" fill-opacity="0.15"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>EICU QI Monitor</span>
+    </div>
+    <span class="badge">중앙대병원 EICU · 13병상</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="theme-btn" data-theme-toggle title="테마 변경">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+<nav class="sidebar">
+  <div class="nav-sec">모니터링</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
+  <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
+  <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
+  <div class="nav-sec">관리</div>
+  <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
+  <a class="nav-item active" href="/settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>설정</a>
+</nav>
+<main class="main">
+  <div class="pg-header">
+    <div>
+      <div class="pg-title">⚙️ 설정</div>
+      <div class="pg-sub">수가 단가, 근무조 시각, 알림 등 운영 설정</div>
+    </div>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-ghost" style="font-size:.8rem" onclick="resetSettings()">초기화</button>
+      <button class="upload-btn" style="font-size:.8rem;padding:.4rem 1rem" onclick="saveAllSettings()">💾 저장</button>
+    </div>
+  </div>
+
+  <!-- 저장 완료 알림 -->
+  <div id="save-ok" style="display:none;background:var(--ok-hl);border:1px solid var(--ok);border-radius:var(--r-md);padding:.6rem 1rem;font-size:.83rem;color:var(--ok)">
+    ✅ 설정이 저장되었습니다.
+  </div>
+
+  <!-- 근무조 시각 -->
+  <div class="card">
+    <div class="card-hd"><div><div class="card-title">근무조 시각 설정</div><div class="card-sub">교대 시작 시각 기준으로 마감 30분 전 알림이 발송됩니다</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;padding:.5rem 0">
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">☀️ Day 시작</div>
+        <input id="set-duty-D" type="time" value="07:00" class="form-input" style="font-size:.9rem;font-family:var(--fm)">
+      </div>
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">🌆 Evening 시작</div>
+        <input id="set-duty-E" type="time" value="15:00" class="form-input" style="font-size:.9rem;font-family:var(--fm)">
+      </div>
+      <div>
+        <div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">🌙 Night 시작</div>
+        <input id="set-duty-N" type="time" value="23:00" class="form-input" style="font-size:.9rem;font-family:var(--fm)">
+      </div>
+    </div>
+    <div style="font-size:.75rem;color:var(--faint);margin-top:.25rem">
+      ※ 마감 알림 = 다음 교대 시작 30분 전 (예: Day 15:00 시작 → 14:30에 알림)
+    </div>
+  </div>
+
+  <!-- 산소 수가 단가 -->
+  <div class="card">
+    <div class="card-hd"><div><div class="card-title">산소 수가 단가</div><div class="card-sub">산소 수가 계산기에 적용되는 단가입니다</div></div></div>
+    <div style="display:flex;align-items:center;gap:1rem;padding:.5rem 0">
+      <div style="flex:1">
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">10L당 단가 (원)</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <input id="set-o2-price" type="number" value="9" min="1" step="0.1" class="form-input" style="width:120px;font-size:.9rem;font-family:var(--fm)">
+          <span style="font-size:.8rem;color:var(--muted)">원 / 10L</span>
+        </div>
+      </div>
+      <div style="flex:2;background:var(--surf2);border-radius:var(--r-sm);padding:.75rem;font-size:.78rem;color:var(--muted);line-height:1.8">
+        예시: Flow 3 L/min × 60분 = 180L<br>
+        180L ÷ 10 × <span id="o2-price-preview">9</span>원 = <strong id="o2-calc-preview" style="color:var(--txt)">162원</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- 처치 단가 (타이머) -->
+  <div class="card">
+    <div class="card-hd"><div><div class="card-title">연속처치 수가 단가</div><div class="card-sub">연속처치 타이머 종료 시 자동 계산에 사용됩니다</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;padding:.5rem 0">
+      <div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">🫁 인공호흡기 (원/시간)</div>
+        <input id="set-price-vent" type="number" value="150" min="0" class="form-input" style="font-size:.85rem;font-family:var(--fm)">
+      </div>
+      <div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">💧 CRRT (원/시간)</div>
+        <input id="set-price-crrt" type="number" value="300" min="0" class="form-input" style="font-size:.85rem;font-family:var(--fm)">
+      </div>
+      <div>
+        <div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">💉 정주펌프 (원/시간)</div>
+        <input id="set-price-pump" type="number" value="50" min="0" class="form-input" style="font-size:.85rem;font-family:var(--fm)">
+      </div>
+    </div>
+  </div>
+
+  <!-- 브라우저 알림 권한 -->
+  <div class="card">
+    <div class="card-hd"><div><div class="card-title">브라우저 알림 권한</div><div class="card-sub">근무조 마감 30분 전 알림을 브라우저 알림으로도 받을 수 있습니다</div></div></div>
+    <div style="display:flex;align-items:center;gap:1rem;padding:.5rem 0">
+      <div id="notif-status" style="font-size:.83rem;padding:.4rem .75rem;border-radius:var(--r-sm);background:var(--surf2)">확인 중...</div>
+      <button class="upload-btn" id="notif-btn" style="font-size:.8rem;padding:.35rem .8rem;display:none" onclick="requestNotifPermission()">알림 허용</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--faint)">※ 브라우저 탭이 열려 있어야 작동합니다. 모바일은 지원하지 않을 수 있습니다.</div>
+  </div>
+
+  <!-- 데이터 관리 -->
+  <div class="card">
+    <div class="card-hd"><div><div class="card-title">데이터 관리</div><div class="card-sub">localStorage에 저장된 데이터를 초기화할 수 있습니다</div></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;padding:.5rem 0">
+      <button class="btn btn-ghost" style="font-size:.78rem;border-color:var(--err);color:var(--err)" onclick="clearData('incidents_manual')">불일치 사례 초기화</button>
+      <button class="btn btn-ghost" style="font-size:.78rem;border-color:var(--err);color:var(--err)" onclick="clearData('twobin_items')">Two-Bin 재고 초기화</button>
+      <button class="btn btn-ghost" style="font-size:.78rem;border-color:var(--err);color:var(--err)" onclick="clearTimers()">타이머 기록 초기화 (오늘)</button>
+      <button class="btn btn-ghost" style="font-size:.78rem;border-color:var(--err);color:var(--err)" onclick="clearAllUploads()">업로드 데이터 전체 초기화</button>
+    </div>
+    <div style="font-size:.75rem;color:var(--faint);margin-top:.5rem">⚠️ 초기화된 데이터는 복구할 수 없습니다.</div>
+  </div>
+
+</main>
+</div>
+
+<script>
+(function(){
+  const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
+  t&&t.addEventListener('click',()=>{
+    const next=r.getAttribute('data-theme')==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next);
+    localStorage.setItem('eicu_theme',next);
+  });
+})();
+
+const SETTINGS_KEY = 'eicu_settings';
+const DEFAULTS = {
+  duty: { D: '07:00', E: '15:00', N: '23:00' },
+  o2_price: 9,
+  unit_prices: { vent: 150, crrt: 300, pump: 50 }
+};
+
+function loadSettings() {
+  return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
+}
+
+function fillForm() {
+  const s = loadSettings();
+  document.getElementById('set-duty-D').value = s.duty?.D || '07:00';
+  document.getElementById('set-duty-E').value = s.duty?.E || '15:00';
+  document.getElementById('set-duty-N').value = s.duty?.N || '23:00';
+  document.getElementById('set-o2-price').value  = s.o2_price ?? 9;
+  document.getElementById('set-price-vent').value = s.unit_prices?.vent ?? 150;
+  document.getElementById('set-price-crrt').value = s.unit_prices?.crrt ?? 300;
+  document.getElementById('set-price-pump').value = s.unit_prices?.pump ?? 50;
+  updateO2Preview();
+}
+
+function updateO2Preview() {
+  const p = parseFloat(document.getElementById('set-o2-price').value) || 9;
+  document.getElementById('o2-price-preview').textContent = p;
+  document.getElementById('o2-calc-preview').textContent = (18 * p).toFixed(0) + '원';
+}
+
+function saveAllSettings() {
+  const s = {
+    duty: {
+      D: document.getElementById('set-duty-D').value,
+      E: document.getElementById('set-duty-E').value,
+      N: document.getElementById('set-duty-N').value,
+    },
+    o2_price: parseFloat(document.getElementById('set-o2-price').value) || 9,
+    unit_prices: {
+      vent: parseFloat(document.getElementById('set-price-vent').value) || 150,
+      crrt: parseFloat(document.getElementById('set-price-crrt').value) || 300,
+      pump: parseFloat(document.getElementById('set-price-pump').value) || 50,
+    }
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  const ok = document.getElementById('save-ok');
+  ok.style.display = 'block';
+  setTimeout(() => ok.style.display = 'none', 2500);
+}
+
+function resetSettings() {
+  if (!confirm('설정을 기본값으로 초기화하시겠습니까?')) return;
+  localStorage.removeItem(SETTINGS_KEY);
+  fillForm();
+}
+
+function requestNotifPermission() {
+  Notification.requestPermission().then(p => updateNotifStatus(p));
+}
+
+function updateNotifStatus(p) {
+  const el = document.getElementById('notif-status');
+  const btn = document.getElementById('notif-btn');
+  if (p === 'granted') {
+    el.style.background = 'var(--ok-hl)'; el.style.color = 'var(--ok)';
+    el.textContent = '✅ 알림 허용됨';
+    btn.style.display = 'none';
+  } else if (p === 'denied') {
+    el.style.background = 'var(--err-hl)'; el.style.color = 'var(--err)';
+    el.textContent = '❌ 알림 거부됨 (브라우저 설정에서 변경)';
+    btn.style.display = 'none';
+  } else {
+    el.textContent = '⚪ 아직 허용하지 않음';
+    btn.style.display = '';
+  }
+}
+
+function clearData(key) {
+  if (!confirm(`'${key}' 데이터를 초기화하시겠습니까?`)) return;
+  localStorage.removeItem(key);
+  alert('초기화 완료');
+}
+
+function clearTimers() {
+  const today = new Date().toISOString().slice(0,10);
+  localStorage.removeItem('timers_' + today);
+  alert('오늘 타이머 기록 초기화 완료');
+}
+
+function clearAllUploads() {
+  if (!confirm('업로드 데이터 전체를 삭제하시겠습니까? 복구 불가합니다.')) return;
+  Object.keys(localStorage).filter(k => k.startsWith('upload_') || k.startsWith('daily_summary_'))
+    .forEach(k => localStorage.removeItem(k));
+  alert('업로드 데이터 초기화 완료');
+}
+
+// init
+fillForm();
+document.getElementById('set-o2-price').addEventListener('input', updateO2Preview);
+if ('Notification' in window) {
+  updateNotifStatus(Notification.permission);
+} else {
+  document.getElementById('notif-status').textContent = '브라우저 알림 미지원';
+}
+</script>
+</body>
+</html>

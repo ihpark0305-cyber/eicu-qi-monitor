@@ -791,30 +791,119 @@ function _updateSummaryCard(total, delayCount, overstockCount, eveningCount) {
   s('sum-evening',    eveningCount);
 }
 
-/* ─── Phase 2-A: Duty Alarm ─────────────────────────────── */
-const DUTY_END_TIMES = { day:'14:30', evening:'22:30', night:'06:30' };
+/* ─── Settings Loader ────────────────────────────────────── */
+const SETTINGS_KEY = 'eicu_settings';
+const SETTING_DEFAULTS = {
+  duty: { D:'07:00', E:'15:00', N:'23:00' },
+  o2_price: 9,
+  unit_prices: { vent:150, crrt:300, pump:50 }
+};
+
+function loadAppSettings() {
+  try {
+    return Object.assign({}, SETTING_DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
+  } catch(e) { return SETTING_DEFAULTS; }
+}
+
+/* ─── Phase 2-A: Duty Alarm (개선) ──────────────────────── */
+// 마감 시각 = 다음 교대 시작 30분 전
+function _getDutyAlarmTimes() {
+  const s = loadAppSettings();
+  const duty = s.duty || SETTING_DEFAULTS.duty;
+  // 마감 30분 전 = 다음 교대 시작 - 30분
+  function sub30(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const total = h * 60 + m - 30;
+    const nh = Math.floor(((total % 1440) + 1440) % 1440 / 60);
+    const nm = ((total % 1440) + 1440) % 1440 % 60;
+    return `${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`;
+  }
+  return { D: sub30(duty.E), E: sub30(duty.N), N: sub30(duty.D) };
+}
+
+// 미처리 타이머 / 미체크 항목 집계
+function _getPendingSummary() {
+  const timers = Object.values(_timerState).filter(s => s.intervalId).length;
+  const chkItems = JSON.parse(localStorage.getItem('checklist_' + _TODAY) || '{}');
+  const totalChk = 8; // CHECKLIST_ITEMS.length
+  const doneChk  = Object.values(chkItems).filter(v => v.done).length;
+  const pending  = totalChk - doneChk;
+  return { timers, pendingChk: pending };
+}
+
+const DUTY_END_TIMES = { day:'14:30', evening:'22:30', night:'06:30' }; // legacy fallback
 
 function checkDutyAlarm() {
   const now   = new Date();
-  const hhmm  = now.toTimeString().slice(0,5);
-  const today = now.toISOString().slice(0,10);
-  Object.entries(DUTY_END_TIMES).forEach(([duty, time]) => {
-    if (hhmm !== time) return;
+  const hhmm  = now.toTimeString().slice(0, 5);
+  const today = now.toISOString().slice(0, 10);
+  const alarmTimes = _getDutyAlarmTimes();
+
+  Object.entries(alarmTimes).forEach(([duty, alarmTime]) => {
+    if (hhmm !== alarmTime) return;
     const confirmed = ['bulchul','ganhocheo','other'].some(doc =>
-      localStorage.getItem(`upload_${today}_${doc}_${duty}`)
+      localStorage.getItem(`upload_${today}_${doc}_${duty.toLowerCase()}`)
     );
-    if (!confirmed) _showDutyModal(duty);
+    if (!confirmed) {
+      const { timers, pendingChk } = _getPendingSummary();
+      _showDutyToast(duty, timers, pendingChk);
+    }
   });
 }
 
-function _showDutyModal(duty) {
-  const labels = { day:'Day', evening:'Evening', night:'Night' };
+function _showDutyToast(duty, pendingTimers, pendingChk) {
+  const labels = { D:'Day', E:'Evening', N:'Night' };
+  const msg = `⏰ ${labels[duty]} 교대 마감 30분 전\n미처리 타이머 ${pendingTimers}개 · 미체크 항목 ${pendingChk}개`;
+
+  // 토스트 UI
+  showToast(msg, 'warn', 8000);
+
+  // 브라우저 Notification API
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('EICU QI Monitor', {
+      body: msg,
+      icon: '/static/favicon.ico'
+    });
+  }
+
+  // fallback: 기존 모달
   const el  = document.getElementById('duty-alarm-modal');
-  const msg = document.getElementById('duty-alarm-msg');
-  if (!el || !msg) return;
-  msg.textContent =
-    `인수인계 30분 전입니다.\n금일 ${labels[duty]} 근무 코스트 누락 점검 서류가 아직 확정되지 않았습니다.`;
-  el.style.display = 'flex';
+  const msgEl = document.getElementById('duty-alarm-msg');
+  if (el && msgEl) {
+    msgEl.innerHTML = `인수인계 30분 전입니다.<br><strong>${labels[duty]} 근무 코스트 누락 점검</strong> 서류가 아직 확정되지 않았습니다.<br><br><span style="font-size:.82rem;color:var(--muted)">미처리 타이머 ${pendingTimers}개 · 미체크 항목 ${pendingChk}개</span>`;
+    el.style.display = 'flex';
+  }
+}
+
+// ── 토스트 알림 공통 함수 ────────────────────────────────
+function showToast(msg, type='info', duration=4000) {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const colorMap = {
+    info:  { bg:'var(--pri-hl)', border:'var(--pri)', color:'var(--pri)' },
+    warn:  { bg:'var(--warn-hl)', border:'var(--warn)', color:'var(--warn)' },
+    error: { bg:'var(--err-hl)', border:'var(--err)', color:'var(--err)' },
+    ok:    { bg:'var(--ok-hl)', border:'var(--ok)', color:'var(--ok)' },
+  };
+  const c = colorMap[type] || colorMap.info;
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background:${c.bg};border:1px solid ${c.border};color:${c.color};
+    border-radius:var(--r-md);padding:.65rem 1rem;font-size:.82rem;
+    box-shadow:0 4px 16px rgba(0,0,0,.15);pointer-events:auto;
+    max-width:320px;white-space:pre-line;line-height:1.5;
+    opacity:0;transition:opacity 0.3s;cursor:pointer`;
+  toast.textContent = msg;
+  toast.onclick = () => toast.remove();
+
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.style.opacity = '1');
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
 }
 
 setInterval(checkDutyAlarm, 60000);
@@ -1378,3 +1467,234 @@ document.addEventListener('click', function(e) {
     renderGuideTab(e.target.dataset.key);
   }
 });
+
+// ── 6. 미처리 항목 뱃지 카운터 ──────────────────────────
+function updateIncidentBadge() {
+  const arr = JSON.parse(localStorage.getItem('incidents_manual') || '[]');
+  const cnt = arr.filter(i => !i.resolved).length;
+  const badge = document.getElementById('nav-incident-badge');
+  if (!badge) return;
+  if (cnt > 0) {
+    badge.textContent = cnt;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// saveManualIncident / toggleResolved 호출 후 뱃지 갱신되도록 원본 함수에 후처리
+const _origSaveManualIncident = saveManualIncident;
+window.saveManualIncident = function() {
+  _origSaveManualIncident();
+  updateIncidentBadge();
+};
+const _origToggleResolved = toggleResolved;
+window.toggleResolved = function(id) {
+  _origToggleResolved(id);
+  updateIncidentBadge();
+};
+
+// 페이지 로드 시 뱃지 초기화
+updateIncidentBadge();
+
+// ── 7. TIMER_UNIT_PRICES 설정에서 동적 로드 ─────────────
+function _getUnitPrices() {
+  const s = loadAppSettings();
+  return {
+    '산소': (s.o2_price || 9) / 10,   // 원/L (10L당 단가 ÷ 10)
+    '인공호흡기': s.unit_prices?.vent || 150,
+    'CRRT':       s.unit_prices?.crrt || 300,
+    '정주펌프':   s.unit_prices?.pump || 50,
+  };
+}
+
+// stopTimer에서 TIMER_UNIT_PRICES 대신 _getUnitPrices() 사용 (동적 override)
+// 원래 stopTimer 내에서 TIMER_UNIT_PRICES를 읽는 부분을 아래 래퍼로 대체
+const _origStopTimer = stopTimer;
+window.stopTimer = function(cardId, patientId, item, flow) {
+  // 단가를 설정에서 동적으로 읽어오기 위해 TIMER_UNIT_PRICES를 일시 덮어씀
+  const prices = _getUnitPrices();
+  Object.assign(TIMER_UNIT_PRICES, prices);
+  _origStopTimer(cardId, patientId, item, flow);
+};
+
+// ── 8. 환자별 처치 요약 카드 인쇄 ───────────────────────
+function printHandoverCards() {
+  const records = JSON.parse(localStorage.getItem(`timers_${_TODAY}`) || '[]');
+  if (!records.length) { alert('오늘 정산된 처치 기록이 없습니다.'); return; }
+
+  // 환자별 그룹핑
+  const byPatient = {};
+  records.forEach(r => {
+    if (!byPatient[r.patientId]) byPatient[r.patientId] = [];
+    byPatient[r.patientId].push(r);
+  });
+
+  const content = Object.entries(byPatient).map(([pid, recs]) => {
+    const rows = recs.map(r =>
+      `<tr><td>${r.item}</td><td>${r.start}</td><td>${r.end}</td><td>${r.durationMin}분</td><td>${r.charge.toLocaleString()}원</td></tr>`
+    ).join('');
+    const total = recs.reduce((s, r) => s + r.charge, 0);
+    return `
+      <div style="border:1px solid #ccc;border-radius:8px;padding:12px;margin-bottom:12px;page-break-inside:avoid">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:8px">🛏 환자: ${pid}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead><tr style="background:#f5f5f5">
+            <th style="padding:4px 8px;text-align:left;border-bottom:1px solid #ddd">처치</th>
+            <th style="padding:4px 8px;text-align:left;border-bottom:1px solid #ddd">시작</th>
+            <th style="padding:4px 8px;text-align:left;border-bottom:1px solid #ddd">종료</th>
+            <th style="padding:4px 8px;text-align:left;border-bottom:1px solid #ddd">시간</th>
+            <th style="padding:4px 8px;text-align:right;border-bottom:1px solid #ddd">수가</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="font-weight:700">
+            <td colspan="4" style="padding:4px 8px;border-top:1px solid #ccc">합계</td>
+            <td style="padding:4px 8px;text-align:right;border-top:1px solid #ccc">${total.toLocaleString()}원</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+  }).join('');
+
+  const printArea = document.getElementById('handover-print-area');
+  const printContent = document.getElementById('handover-print-content');
+  const printDate = document.getElementById('handover-print-date');
+
+  if (printArea && printContent) {
+    printContent.innerHTML = content;
+    if (printDate) printDate.textContent = new Date().toLocaleString('ko-KR');
+    printArea.style.display = 'block';
+    window.print();
+    printArea.style.display = 'none';
+  }
+}
+
+// ── 9. Two-Bin 재고 현황판 ────────────────────────────────
+const TWOBIN_KEY = 'twobin_items';
+
+function loadTwoBinItems() {
+  return JSON.parse(localStorage.getItem(TWOBIN_KEY) || '[]');
+}
+
+function saveTwoBinItems(items) {
+  localStorage.setItem(TWOBIN_KEY, JSON.stringify(items));
+}
+
+function openAddTwoBinModal() {
+  document.getElementById('twoBinModal').style.display = 'flex';
+}
+function closeTwoBinModal() {
+  document.getElementById('twoBinModal').style.display = 'none';
+}
+
+function addTwoBinItem() {
+  const name = document.getElementById('tb-name')?.value.trim();
+  const unit = document.getElementById('tb-unit')?.value.trim() || '개';
+  const maxA = parseInt(document.getElementById('tb-maxA')?.value) || 10;
+  const maxB = parseInt(document.getElementById('tb-maxB')?.value) || 5;
+  if (!name) { alert('품목명을 입력하세요.'); return; }
+
+  const items = loadTwoBinItems();
+  items.push({ id: Date.now(), name, unit, maxA, maxB, curA: maxA, curB: maxB });
+  saveTwoBinItems(items);
+  renderTwoBin();
+  closeTwoBinModal();
+  ['tb-name','tb-unit','tb-maxA','tb-maxB'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+}
+
+function updateTwoBinQty(id, bin, delta) {
+  const items = loadTwoBinItems();
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const key = 'cur' + bin; // curA or curB
+  item[key] = Math.max(0, (item[key] || 0) + delta);
+  saveTwoBinItems(items);
+  renderTwoBin();
+}
+
+function removeTwoBinItem(id) {
+  if (!confirm('이 품목을 삭제하시겠습니까?')) return;
+  saveTwoBinItems(loadTwoBinItems().filter(i => i.id !== id));
+  renderTwoBin();
+}
+
+function resetTwoBinA(id) {
+  const items = loadTwoBinItems();
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item.curA = item.maxA;
+  saveTwoBinItems(items);
+  renderTwoBin();
+  showToast(`${item.name} Bin A 보충 완료`, 'ok', 2500);
+}
+
+function renderTwoBin() {
+  const items = loadTwoBinItems();
+  const tbody = document.getElementById('twobin-body');
+  const empty = document.getElementById('twobin-empty');
+  const wrap  = document.getElementById('twobin-table-wrap');
+  if (!tbody) return;
+
+  if (!items.length) {
+    if (wrap)  wrap.style.display  = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (wrap)  wrap.style.display  = 'block';
+  if (empty) empty.style.display = 'none';
+
+  tbody.innerHTML = items.map(item => {
+    const aRatio = item.maxA > 0 ? item.curA / item.maxA : 0;
+    const bRatio = item.maxB > 0 ? item.curB / item.maxB : 0;
+    const aEmpty = item.curA === 0;
+    const bEmpty = item.curB === 0;
+    const both   = aEmpty && bEmpty;
+
+    let statusHtml, requestBtn;
+    if (both) {
+      statusHtml = `<span style="color:var(--err);font-weight:700">🔴 즉시 보충</span>`;
+      requestBtn = `<a href="mailto:supply@hospital.kr?subject=[EICU 긴급보충] ${item.name}&body=Bin A+B 모두 소진. 즉시 보충 요청합니다." class="btn btn-ghost" style="font-size:.73rem;border-color:var(--err);color:var(--err);padding:.2rem .5rem">📧 긴급 요청</a>`;
+    } else if (aEmpty) {
+      statusHtml = `<span style="color:var(--warn);font-weight:600">🟡 Bin B 사용 중</span>`;
+      requestBtn = `<a href="mailto:supply@hospital.kr?subject=[EICU 보충요청] ${item.name}&body=Bin A 소진. Bin B 사용 중. 정기 보충 요청합니다." class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem">📧 보충 요청</a>`;
+    } else {
+      statusHtml = `<span style="color:var(--ok)">🟢 정상</span>`;
+      requestBtn = `<span style="font-size:.73rem;color:var(--faint)">—</span>`;
+    }
+
+    const barA = `<div style="display:flex;align-items:center;gap:.4rem">
+      <button onclick="updateTwoBinQty(${item.id},'A',-1)" style="font-size:.8rem;color:var(--err);font-weight:700;padding:0 .2rem;border:1px solid var(--bdr);border-radius:3px">−</button>
+      <div style="flex:1;background:var(--bdr);border-radius:3px;height:6px;min-width:48px">
+        <div style="width:${Math.round(aRatio*100)}%;height:100%;background:${aEmpty?'var(--err)':aRatio<0.3?'var(--warn)':'var(--ok)'};border-radius:3px;transition:.3s"></div>
+      </div>
+      <span style="font-size:.73rem;font-family:var(--fm)">${item.curA}/${item.maxA}</span>
+      <button onclick="updateTwoBinQty(${item.id},'A',1)" style="font-size:.8rem;color:var(--ok);font-weight:700;padding:0 .2rem;border:1px solid var(--bdr);border-radius:3px">+</button>
+    </div>`;
+
+    const barB = `<div style="display:flex;align-items:center;gap:.4rem">
+      <button onclick="updateTwoBinQty(${item.id},'B',-1)" style="font-size:.8rem;color:var(--err);font-weight:700;padding:0 .2rem;border:1px solid var(--bdr);border-radius:3px">−</button>
+      <div style="flex:1;background:var(--bdr);border-radius:3px;height:6px;min-width:48px">
+        <div style="width:${Math.round(bRatio*100)}%;height:100%;background:${bEmpty?'var(--err)':bRatio<0.3?'var(--warn)':'var(--pur)'};border-radius:3px;transition:.3s"></div>
+      </div>
+      <span style="font-size:.73rem;font-family:var(--fm)">${item.curB}/${item.maxB}</span>
+      <button onclick="updateTwoBinQty(${item.id},'B',1)" style="font-size:.8rem;color:var(--ok);font-weight:700;padding:0 .2rem;border:1px solid var(--bdr);border-radius:3px">+</button>
+    </div>`;
+
+    return `<tr style="${both ? 'background:var(--err-hl)' : aEmpty ? 'background:var(--warn-hl)' : ''}">
+      <td style="font-weight:600">${item.name}</td>
+      <td style="font-size:.75rem;color:var(--muted)">${item.unit}</td>
+      <td style="min-width:140px">${barA}</td>
+      <td style="min-width:140px">${barB}</td>
+      <td>${statusHtml}</td>
+      <td>${requestBtn}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost" style="font-size:.72rem;padding:.15rem .45rem" onclick="resetTwoBinA(${item.id})">🔄A보충</button>
+        <button class="btn btn-ghost" style="font-size:.72rem;padding:.15rem .45rem;color:var(--err)" onclick="removeTwoBinItem(${item.id})">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// 페이지 로드 시 Two-Bin 렌더
+renderTwoBin();
