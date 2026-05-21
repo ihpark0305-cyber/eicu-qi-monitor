@@ -64,23 +64,27 @@ def compare():
         return jsonify(result), 400
     return jsonify(result)
 
-@app.route("/api/test-gemini")
-def test_gemini():
+@app.route("/api/test-groq")
+def test_groq():
     import os, requests as req
-    key = os.environ.get("GEMINI_API_KEY")
+    key = os.environ.get("GROQ_API_KEY")
     if not key:
-        return jsonify({"status": "error", "msg": "GEMINI_API_KEY 없음"})
+        return jsonify({"status": "error", "msg": "GROQ_API_KEY 없음"})
     try:
         res = req.post(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-            params={"key": key},
-            json={"contents": [{"parts": [{"text": "안녕"}]}]},
-            timeout=10
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+            json={
+                "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+                "messages": [{"role": "user", "content": "안녕. 한국어로 짧게 답해줘."}],
+                "max_tokens": 50
+            },
+            timeout=15
         )
         d = res.json()
         if "error" in d:
-            return jsonify({"status": "error", "msg": d["error"].get("message","unknown")})
-        return jsonify({"status": "ok", "reply": d["candidates"][0]["content"]["parts"][0]["text"]})
+            return jsonify({"status": "error", "msg": d["error"].get("message", str(d["error"]))})
+        return jsonify({"status": "ok", "reply": d["choices"][0]["message"]["content"]})
     except Exception as e:
         return jsonify({"status": "error", "msg": str(e)})
 

@@ -36,39 +36,45 @@ MIME_MAP = {
     '.webp': 'image/webp',
 }
 
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 
 def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        return {"error": "GEMINI_API_KEY 미설정", "manual_mode": True}
+        return {"error": "GROQ_API_KEY 미설정", "manual_mode": True}
 
     try:
         b64 = base64.b64encode(file_bytes).decode("utf-8")
+        data_url = f"data:{mime_type};base64,{b64}"
 
         payload = {
-            "contents": [{
-                "parts": [
-                    {"text": PROMPT},
-                    {"inline_data": {"mime_type": mime_type, "data": b64}}
+            "model": GROQ_MODEL,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": PROMPT},
+                    {"type": "image_url", "image_url": {"url": data_url}}
                 ]
-            }]
+            }],
+            "max_tokens": 4096,
+            "temperature": 0
         }
 
         res = requests.post(
-            GEMINI_URL,
-            params={"key": api_key},
+            GROQ_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json=payload,
-            timeout=30
+            timeout=60
         )
         result = res.json()
 
         if "error" in result:
             msg = result["error"].get("message", str(result["error"]))
-            return {"error": f"Gemini API 오류: {msg}", "manual_mode": True}
+            return {"error": f"Groq API 오류: {msg}", "manual_mode": True}
 
-        text = result["candidates"][0]["content"]["parts"][0]["text"].strip()
+        text = result["choices"][0]["message"]["content"].strip()
 
         match = re.search(r'\[.*\]', text, re.DOTALL)
         if not match:
@@ -78,7 +84,7 @@ def extract_from_image(file_bytes: bytes, mime_type: str) -> dict:
         return {"items": items, "count": len(items)}
 
     except requests.exceptions.Timeout:
-        return {"error": "요청 시간 초과 (30초)", "manual_mode": True}
+        return {"error": "요청 시간 초과 (60초)", "manual_mode": True}
     except json.JSONDecodeError as e:
         return {"error": f"JSON 파싱 오류: {str(e)}", "manual_mode": True}
     except Exception as e:
