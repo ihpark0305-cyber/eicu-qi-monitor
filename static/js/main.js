@@ -1101,6 +1101,7 @@ function renderUploadHistory() {
       </div>
       <div style="display:flex;gap:.35rem;flex-shrink:0">
         <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem" onclick="viewUploadDetail('${key}')">🔍 조회</button>
+        <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem;color:var(--pur);border-color:var(--pur)" onclick="reEditFromHistory('${key}')">✏️ 수정</button>
         <button class="btn btn-ghost" style="font-size:.73rem;padding:.2rem .5rem;color:var(--err);border-color:var(--err)" onclick="deleteUploadRecord('${key}')">🗑 삭제</button>
       </div>
     </div>`;
@@ -1136,7 +1137,37 @@ function viewUploadDetail(key) {
       </tr>`).join('')
     : '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1rem">행 데이터 없음</td></tr>';
 
+  const reEditBtn = document.getElementById('hv-reedit-btn');
+  if (reEditBtn) reEditBtn.onclick = () => {
+    document.getElementById('historyViewModal').style.display = 'none';
+    reEditFromHistory(key);
+  };
   document.getElementById('historyViewModal').style.display = 'flex';
+}
+
+function reEditFromHistory(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) { alert('데이터를 찾을 수 없습니다.'); return; }
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { alert('데이터 파싱 오류'); return; }
+  const rows = data.rows || [];
+  if (!rows.length) { alert('저장된 행 데이터가 없습니다.'); return; }
+
+  // 메타 복원
+  const parts = key.split('_');
+  if (parts[1]) document.getElementById('meta-date') && (document.getElementById('meta-date').value = parts[1]);
+  if (data.meta) {
+    const duty = data.meta.duty || parts[3] || '';
+    const el = document.getElementById('meta-duty');
+    if (el) el.value = duty;
+    const memo = document.getElementById('meta-memo');
+    if (memo) memo.value = data.meta.memo || '';
+  }
+
+  // OCR 테이블로 로드 후 스크롤
+  renderOcrTable(rows, false);
+  document.getElementById('ocr-result-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showToast('업로드 내역을 불러왔습니다. 수정 후 "분석 확정"을 눌러주세요.', 'ok', 3500);
 }
 
 function deleteUploadRecord(key) {
