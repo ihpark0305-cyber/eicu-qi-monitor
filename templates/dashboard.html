@@ -6,8 +6,10 @@
 <title>EICU QI Monitor</title>
 <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -407,7 +409,7 @@
       </div>
       <div style="overflow-x:auto">
         <table id="incidents-table">
-          <thead><tr><th>항목</th><th>지연·불일치 원인</th><th>교대</th><th>우선순위</th><th>상태</th></tr></thead>
+          <thead><tr><th>항목</th><th>지연·불일치 원인</th><th>교대</th><th>우선순위</th><th>상태</th><th>날짜</th></tr></thead>
           <tbody id="incidents-body"></tbody>
         </table>
       </div>
@@ -431,6 +433,7 @@
   </div>
 
   <!-- ── Phase 4: Two-Bin 재고 현황판 ────────────────────── -->
+  <div id="twobin-alert" style="display:none;align-items:center;gap:.75rem;padding:.65rem 1rem;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);font-size:.82rem;font-weight:600;color:var(--err)"></div>
   <div class="card" id="twobin-section">
     <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
       <div><div class="card-title">📦 Two-Bin 비처방성 물품 재고 현황</div><div class="card-sub">Bin A(주간 사용분) / Bin B(비상 재고) 상태 관리</div></div>

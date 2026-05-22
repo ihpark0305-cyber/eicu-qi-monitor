@@ -136,3 +136,42 @@ tbody td:first-child{font-weight:500;color:var(--txt)}
   #print-label-area{display:grid!important;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1.5rem}
   #handover-print-area{display:block!important}
 }
+/* ── Heatmap table ───────────────────────────────────────── */
+.heatmap-table{border-collapse:separate;border-spacing:3px;font-size:.7rem;font-family:'JetBrains Mono',monospace}
+.heatmap-table th{padding:4px 8px;color:var(--muted);font-weight:600;text-align:center;font-family:'Noto Sans KR',sans-serif}
+.heatmap-table td{width:46px;height:38px;text-align:center;border-radius:4px;color:#fff;font-weight:700;vertical-align:middle}
+.heatmap-table .row-lbl{font-size:.7rem;color:var(--muted);font-family:'Noto Sans KR',sans-serif;white-space:nowrap;padding-right:6px;font-weight:500;text-align:right}
+/* ── Blink animation ─────────────────────────────────────── */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+.blink{animation:blink 1.2s ease-in-out infinite}
+/* ── Presentation / Slide mode ───────────────────────────── */
+.presentation-mode .sidebar,
+.presentation-mode .topbar{display:none!important}
+.presentation-mode .main{padding:2rem 2.5rem}
+.slide{display:block}
+body.presentation-mode .slide{display:none}
+body.presentation-mode .slide.active{display:block}
+#slide-nav{display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;
+  align-items:center;gap:.5rem;background:var(--surf);border:1px solid var(--bdr);
+  border-radius:var(--r-lg);padding:.5rem 1rem;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+/* ── Before/After comparison ─────────────────────────────── */
+.ba-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:900px){.ba-grid{grid-template-columns:1fr}}
+.ba-card{border-radius:var(--r-lg);padding:1rem 1.25rem}
+.ba-card.before{background:#fff5f5;border:1.5px solid #f03e3e}
+.ba-card.after{background:#ebfbee;border:1.5px solid #40c057}
+[data-theme="dark"] .ba-card.before{background:rgba(240,62,62,.1);border-color:#f03e3e}
+[data-theme="dark"] .ba-card.after{background:rgba(64,192,87,.1);border-color:#40c057}
+.ba-label{font-size:.65rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.75rem}
+.ba-card.before .ba-label{color:#f03e3e}
+.ba-card.after .ba-label{color:#40c057}
+.ba-item{font-size:.8rem;padding:.3rem 0;border-bottom:1px solid rgba(0,0,0,.06);color:var(--txt);line-height:1.5}
+.ba-item:last-child{border-bottom:none}
+/* ── KPI baseline card ───────────────────────────────────── */
+.kpi-baseline{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:1.1rem;display:flex;flex-direction:column;gap:.5rem}
+.kpi-baseline .bl-lbl{font-size:.75rem;color:var(--muted);font-weight:500}
+.kpi-baseline .bl-val{font-size:1.6rem;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
+.kpi-baseline .bl-goal{font-size:.7rem;color:var(--faint)}
+.bl-badge{display:inline-flex;align-items:center;gap:.3rem;padding:2px 8px;border-radius:99px;font-size:.65rem;font-weight:700}
+.bl-badge-red{background:rgba(220,38,38,.12);color:#dc2626}
+.bl-badge-blk{background:rgba(100,116,139,.12);color:var(--muted)}

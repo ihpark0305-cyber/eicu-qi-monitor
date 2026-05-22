@@ -6,35 +6,23 @@
 <title>발표용 데모 · EICU QI Monitor</title>
 <script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="/static/css/style.css">
-<style>
-.demo-banner{background:linear-gradient(135deg,#7c3aed18,#3b82f618);border:2px dashed var(--pur);border-radius:var(--r-lg);padding:.6rem 1.1rem;display:flex;align-items:center;gap:.75rem}
-.demo-tag{background:var(--pur);color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.06em;flex-shrink:0}
-.heatmap{display:grid;grid-template-columns:52px repeat(7,1fr);gap:3px;font-size:.7rem;font-family:var(--fm)}
-.hm-head{padding:4px 0;text-align:center;color:var(--muted);font-size:.65rem}
-.hm-lbl{display:flex;align-items:center;color:var(--muted);font-size:.7rem}
-.hm-cell{height:34px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.65rem;color:#fff}
-.top5-item{display:flex;align-items:center;gap:.6rem;padding:.35rem 0;border-bottom:1px solid var(--div);font-size:.82rem}
-.top5-item:last-child{border-bottom:none}
-.top5-rank{font-family:var(--fm);font-weight:700;font-size:.8rem;width:18px;color:var(--faint);flex-shrink:0}
-.chk-row{display:flex;align-items:center;gap:.75rem;padding:.45rem 0;border-bottom:1px solid var(--div);font-size:.82rem}
-.chk-row:last-child{border-bottom:none}
-.incident-badge{display:inline-flex;padding:1px 7px;border-radius:99px;font-size:.65rem;font-weight:700}
-.badge-high{background:rgba(239,68,68,.15);color:var(--err)}
-.badge-mid{background:rgba(245,158,11,.15);color:var(--warn)}
-.badge-low{background:rgba(100,116,139,.15);color:var(--muted)}
-.badge-resolved{background:rgba(16,185,129,.15);color:var(--ok)}
-.badge-pending{background:rgba(239,68,68,.12);color:var(--err)}
-.settle-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--div);font-size:.82rem}
-.settle-row:last-child{border-bottom:none}
-.twobin-row{display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid var(--div);font-size:.82rem}
-.twobin-row:last-child{border-bottom:none}
-</style>
+<script defer src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
 </head>
 <body>
 <div class="app">
-<header class="topbar">
+
+<!-- 슬라이드 네비게이션 (발표 모드에서만 표시) -->
+<div id="slide-nav" style="display:none">
+  <button class="btn btn-ghost" style="font-size:.8rem" onclick="prevSlide()">← 이전</button>
+  <span id="slide-counter" style="font-size:.82rem;font-weight:600;min-width:40px;text-align:center">1 / 5</span>
+  <button class="btn btn-ghost" style="font-size:.8rem" onclick="nextSlide()">다음 →</button>
+  <button class="btn btn-ghost" style="font-size:.8rem;color:var(--err);border-color:var(--err)" onclick="exitPresentationMode()">✕ 종료</button>
+</div>
+
+<header class="topbar" id="main-topbar">
   <div style="display:flex;align-items:center;gap:12px">
     <div class="logo">
       <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#3b82f6" fill-opacity="0.15"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -45,12 +33,14 @@
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <span style="font-size:.75rem;color:var(--muted)">최종 업데이트: 2026.05.22 14:32</span>
+    <button class="upload-btn" style="font-size:.75rem;padding:.3rem .8rem;background:var(--pur)" onclick="enterPresentationMode()">🎬 발표 모드</button>
     <button class="theme-btn" data-theme-toggle>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
   </div>
 </header>
-<nav class="sidebar">
+
+<nav class="sidebar" id="main-sidebar">
   <div class="nav-sec">모니터링</div>
   <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
   <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
@@ -63,363 +53,503 @@
   <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
   <a class="nav-item" href="/effects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>기대 효과</a>
 </nav>
+
 <main class="main">
-  <!-- 데모 배너 -->
-  <div class="demo-banner" style="margin-bottom:.75rem">
-    <span class="demo-tag">DEMO</span>
-    <span style="font-size:.82rem;color:var(--muted)">이 화면은 발표용 데모입니다 — 모든 수치는 예시 데이터입니다. 실제 데이터는 메인 대시보드에서 확인하세요.</span>
+
+  <!-- ── 상단 노란 배너 ────────────────────────────────── -->
+  <div style="background:#fff3cd;padding:10px 16px;text-align:center;font-size:13px;border:1px solid #ffc107;border-radius:var(--r-md);font-weight:500">
+    📢 현재 표시된 수치는 QI 활동 개선 전 기저치입니다. 개선안 적용 후 실측값으로 업데이트됩니다.
   </div>
 
-  <div class="pg-header" style="margin-bottom:.75rem">
-    <div>
-      <div class="pg-title">EMR-전산 반영 현황 대시보드</div>
-      <div class="pg-sub">EMR 입력 → 전산 반영 → 청구 흐름 확인 모니터링</div>
+  <!-- ══════════════════════════════════════════
+       슬라이드 1: KPI 기저치 카드
+  ══════════════════════════════════════════════ -->
+  <section class="slide active" id="slide-1">
+    <div class="pg-header" style="margin-bottom:.75rem">
+      <div>
+        <div class="pg-title">개선 전 기저치 현황</div>
+        <div class="pg-sub">QI 활동 시작 전 측정값 (2026년 4월 기준)</div>
+      </div>
+      <span style="font-size:.72rem;padding:3px 10px;background:var(--err-hl);color:var(--err);border-radius:99px;font-weight:700">개선 전 기저치</span>
     </div>
-    <div class="ptabs">
-      <div class="ptab active" id="tab-monthly" onclick="switchPeriod('monthly')">월간</div>
-      <div class="ptab" id="tab-weekly" onclick="switchPeriod('weekly')">주간 (반영 지연 감지)</div>
-    </div>
-  </div>
 
-  <!-- Daily Summary KPI 5개 -->
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem">
-    <div class="kpi" style="padding:.875rem"><div class="kpi-lbl">총 업로드</div><div class="kpi-val" style="font-size:1.4rem">12</div></div>
-    <div class="kpi" style="padding:.875rem"><div class="kpi-lbl">추출 완료</div><div class="kpi-val" style="font-size:1.4rem">143</div></div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(245,158,11,.3)"><div class="kpi-lbl">확인 필요</div><div class="kpi-val c-warn" style="font-size:1.4rem">4</div></div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(239,68,68,.3)"><div class="kpi-lbl">과다 적재 경고</div><div class="kpi-val c-bad" style="font-size:1.4rem">2</div></div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(167,139,250,.3)"><div class="kpi-lbl">이브닝 정산 필요</div><div class="kpi-val" style="color:var(--pur);font-size:1.4rem">3</div></div>
-  </div>
-
-  <!-- 업로드 존 (데모 배너로 대체) -->
-  <div class="card" style="padding:1rem 1.25rem;background:linear-gradient(135deg,#7c3aed08,#3b82f608);border:1.5px dashed var(--pur)">
-    <div style="display:flex;align-items:center;gap:.75rem">
-      <span class="badge-pur" style="font-size:.65rem;font-weight:700">DEMO 전용</span>
-      <span style="font-size:.82rem;color:var(--muted)">실제 파일 업로드 기능은 메인 대시보드에서 이용할 수 있습니다.</span>
-      <a href="/" style="margin-left:auto;font-size:.75rem;color:var(--pri);text-decoration:none;font-weight:500">→ 메인으로</a>
-    </div>
-  </div>
-
-  <!-- 메인 KPI 4개 -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem">
-    <div class="kpi" id="v1">
-      <div class="kpi-lbl">반영 일치율</div>
-      <div class="kpi-val c-ok">94.4%</div>
-      <div class="kpi-delta delta-up">▲ +3.1%</div>
-    </div>
-    <div class="kpi" id="v2">
-      <div class="kpi-lbl">이브닝 처리율</div>
-      <div class="kpi-val c-warn">87.5%</div>
-      <div class="kpi-delta" style="color:var(--warn);font-size:.7rem">목표 ≥90%</div>
-    </div>
-    <div class="kpi" id="v3">
-      <div class="kpi-lbl">체크리스트 수행률</div>
-      <div class="kpi-val c-ok">87.5%</div>
-      <div class="kpi-delta delta-up">7 / 8 완료</div>
-    </div>
-    <div class="kpi" id="v4">
-      <div class="kpi-lbl">반영 지연 추정액</div>
-      <div class="kpi-val" style="font-family:var(--fm)">₩32,400</div>
-      <div class="kpi-delta delta-down">▼ -41.8%</div>
-    </div>
-  </div>
-
-  <!-- 추이 차트 -->
-  <div class="card">
-    <div class="card-hd">
-      <div><div class="card-title">반영 불일치율 추이</div><div class="card-sub" id="trend-sub">월별 · 최근 6개월</div></div>
-      <div class="ptabs">
-        <div class="ptab active" onclick="switchPeriod('monthly')">월간</div>
-        <div class="ptab" onclick="switchPeriod('weekly')">주간</div>
+    <!-- 기저치 KPI 4개 -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.875rem">
+      <div class="kpi-baseline">
+        <div class="bl-lbl">수가 입력 누락률</div>
+        <div class="bl-val c-bad">12.3%</div>
+        <div class="bl-goal">목표: 5% 미만</div>
+        <span class="bl-badge bl-badge-red">🔴 개선 필요</span>
+      </div>
+      <div class="kpi-baseline">
+        <div class="bl-lbl">불일치율</div>
+        <div class="bl-val c-bad">67%</div>
+        <div class="bl-goal">목표: 34% 이하</div>
+        <span class="bl-badge bl-badge-red">🔴 개선 필요</span>
+      </div>
+      <div class="kpi-baseline">
+        <div class="bl-lbl">체크리스트 완료율</div>
+        <div class="bl-val" style="color:var(--faint)">0%</div>
+        <div class="bl-goal">목표: 90% 이상</div>
+        <span class="bl-badge bl-badge-blk">⚫ 미도입</span>
+      </div>
+      <div class="kpi-baseline">
+        <div class="bl-lbl">타이머 기록률</div>
+        <div class="bl-val" style="color:var(--faint)">0%</div>
+        <div class="bl-goal">목표: 80% 이상</div>
+        <span class="bl-badge bl-badge-blk">⚫ 미도입</span>
       </div>
     </div>
-    <div style="position:relative;height:220px"><canvas id="trendChart"></canvas></div>
-  </div>
 
-  <!-- 처치 유형별 반영 지연율 -->
-  <div class="card" id="panel-delay">
-    <div class="card-hd"><div class="card-title">처치 유형별 반영 지연율</div><div class="card-sub">현재 주간 기준</div></div>
-    <div style="display:flex;flex-direction:column;gap:.4rem">
-      <!-- bars -->
-      <div id="delay-bars"></div>
+    <!-- 업로드 존 대체 (데모 전용) -->
+    <div class="card" style="padding:1rem 1.25rem;background:linear-gradient(135deg,#7c3aed08,#3b82f608);border:1.5px dashed var(--pur)">
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <span class="badge-pur" style="font-size:.65rem;font-weight:700">DEMO 전용</span>
+        <span style="font-size:.82rem;color:var(--muted)">실제 파일 업로드 기능은 메인 대시보드에서 이용할 수 있습니다.</span>
+        <a href="/" style="margin-left:auto;font-size:.75rem;color:var(--pri);text-decoration:none;font-weight:500">→ 메인으로</a>
+      </div>
     </div>
-  </div>
 
-  <!-- 2열 그리드: 체크리스트 + Top5 -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <!-- 4 KPI 대시보드 -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem">
+      <div class="kpi">
+        <div class="kpi-lbl">반영 일치율</div>
+        <div class="kpi-val c-bad">33.0%</div>
+        <div class="kpi-dl"><span class="d-up">↓ -3.1%p</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">이브닝 처리율</div>
+        <div class="kpi-val c-warn">67.0%</div>
+        <div class="kpi-dl"><span style="color:var(--warn)">목표 ≥90%</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">체크리스트 수행률</div>
+        <div class="kpi-val c-warn">50%</div>
+        <div class="kpi-dl"><span class="d-n">3 / 6 완료</span></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">반영 지연 추정액</div>
+        <div class="kpi-val" style="font-family:var(--fm)">₩32,400</div>
+        <div class="kpi-dl"><span class="d-up">↓ -₩12,400</span></div>
+      </div>
+    </div>
+
+    <!-- 추이 차트 -->
+    <div class="card">
+      <div class="card-hd">
+        <div><div class="card-title">반영 불일치율 추이</div><div class="card-sub" id="demo-trend-sub">월간 · 최근 6개월</div></div>
+        <div class="ptabs">
+          <div class="ptab active" id="demo-tab-m" onclick="switchDemoPeriod('monthly')">월간</div>
+          <div class="ptab" id="demo-tab-w" onclick="switchDemoPeriod('weekly')">주간</div>
+        </div>
+      </div>
+      <div style="position:relative;height:220px"><canvas id="demoTrendChart"></canvas></div>
+    </div>
+
+    <!-- 처치 유형별 지연율 바 -->
+    <div class="card">
+      <div class="card-hd"><div class="card-title">처치 유형별 반영 지연율</div><div class="card-sub">현재 데모 데이터 기준</div></div>
+      <div id="demo-delay-bars"></div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       슬라이드 2: 개선 전·후 비교
+  ══════════════════════════════════════════════ -->
+  <section class="slide" id="slide-2">
+    <div class="pg-header" style="margin-bottom:.75rem">
+      <div>
+        <div class="pg-title">개선 전·후 비교</div>
+        <div class="pg-sub">QI 활동 적용 전후 업무 방식 변화</div>
+      </div>
+    </div>
+    <div class="ba-grid">
+      <!-- 수가 입력 관리 -->
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <div style="text-align:center;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.04em">📋 수가 입력 관리</div>
+        <div class="ba-card before">
+          <div class="ba-label">Before</div>
+          <div class="ba-item">이브닝 1명이 전 근무조 누락분 일괄 처리</div>
+          <div class="ba-item">연속형 항목(산소·HFNC) 수작업 계산</div>
+          <div class="ba-item">야간 이후 누락 발견 시 소급 불가</div>
+        </div>
+        <div class="ba-card after">
+          <div class="ba-label">After</div>
+          <div class="ba-item">마감 30분 전 팝업 알림 자동 발송</div>
+          <div class="ba-item">연속처치 타이머 → 자동 수가 계산</div>
+          <div class="ba-item">구간별 수가 합산 · 근무조 단위 정산</div>
+        </div>
+      </div>
+      <!-- 재고 관리 -->
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <div style="text-align:center;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.04em">📦 재고 관리</div>
+        <div class="ba-card before">
+          <div class="ba-label">Before</div>
+          <div class="ba-item">전산 추적 불가 — 실물 확인만 가능</div>
+          <div class="ba-item">수간호사실까지 수액 박스 과다 적재</div>
+          <div class="ba-item">Bin 소진 발견 시 수동 발주</div>
+        </div>
+        <div class="ba-card after">
+          <div class="ba-label">After</div>
+          <div class="ba-item">Two-Bin 시각적 재고 통제</div>
+          <div class="ba-item">MAX 라벨링으로 과다 유입 차단</div>
+          <div class="ba-item">Bin A 소진 시 자동 알림 + 이메일 발송</div>
+        </div>
+      </div>
+      <!-- 인수인계 -->
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        <div style="text-align:center;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.04em">🔄 인수인계</div>
+        <div class="ba-card before">
+          <div class="ba-label">Before</div>
+          <div class="ba-item">연속처치 현황 구두 전달 — 누락 위험</div>
+          <div class="ba-item">시작 시각 기억에 의존</div>
+          <div class="ba-item">근무조 간 수가 정산 불투명</div>
+        </div>
+        <div class="ba-card after">
+          <div class="ba-label">After</div>
+          <div class="ba-item">타이머 기록 → 환자별 처치 카드 자동 생성</div>
+          <div class="ba-item">인쇄 버튼 1회 → 구조화된 인수인계</div>
+          <div class="ba-item">근무조 단위 수가 합산 자동 표시</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       슬라이드 3: Two-Bin 현황판
+  ══════════════════════════════════════════════ -->
+  <section class="slide" id="slide-3">
+    <div class="pg-header" style="margin-bottom:.75rem">
+      <div>
+        <div class="pg-title">Two-Bin 재고 현황판</div>
+        <div class="pg-sub">비처방성 소모품 5종 · 데모 데이터</div>
+      </div>
+    </div>
+    <!-- 긴급 알림 -->
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;background:var(--err-hl);border:1px solid rgba(239,68,68,.35);border-radius:var(--r-md);font-size:.82rem;font-weight:600;color:var(--err)">
+      🔴 긴급: <strong>5% 포도당 수액</strong> Bin A 소진 — 즉시 보충 필요 <span class="blink">⚠️</span>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table id="demo-twobin-table">
+          <thead><tr><th>품목명</th><th>Bin A (주간)</th><th>Bin B (비상)</th><th>MAX</th><th>상태</th></tr></thead>
+          <tbody id="demo-twobin-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       슬라이드 4: 연속처치 타이머 정산
+  ══════════════════════════════════════════════ -->
+  <section class="slide" id="slide-4">
+    <div class="pg-header" style="margin-bottom:.75rem">
+      <div>
+        <div class="pg-title">연속처치 타이머 정산</div>
+        <div class="pg-sub">이브닝 정산 현황 · 2026.05.22</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table id="demo-settle-table">
+          <thead><tr><th>병실</th><th>처치</th><th>시작</th><th>종료</th><th>시간</th><th style="text-align:right">수가</th></tr></thead>
+          <tbody id="demo-settle-body"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;padding:.75rem 0;margin-top:.5rem;border-top:2px solid var(--bdr)">
+        <span style="font-size:.9rem;font-weight:700">합계&nbsp;&nbsp;</span>
+        <span style="font-family:var(--fm);font-size:.9rem;font-weight:800;color:var(--ok)">₩6,237</span>
+      </div>
+    </div>
+
     <!-- 체크리스트 -->
     <div class="card">
-      <div class="card-hd"><div class="card-title">체크리스트</div><div class="card-sub">Day 근무 · 2026.05.22</div></div>
-      <div id="chk-list"></div>
+      <div class="card-hd">
+        <div><div class="card-title">체크리스트 · Day 근무 2026.05.22</div></div>
+        <span style="font-family:var(--fm);font-size:.82rem;color:var(--warn);font-weight:700">3 / 6 완료 (50%)</span>
+      </div>
+      <div style="height:6px;background:var(--surfoff);border-radius:3px;margin-bottom:.75rem;overflow:hidden">
+        <div style="width:50%;height:100%;background:var(--pri);border-radius:3px;transition:width .6s"></div>
+      </div>
+      <div id="demo-chk-list"></div>
     </div>
-    <!-- Top5 -->
-    <div class="card">
-      <div class="card-hd"><div class="card-title">Top 5 불일치 품목</div><div class="card-sub">최근 업로드 기준</div></div>
-      <div id="top5-list"></div>
-    </div>
-  </div>
+  </section>
 
-  <!-- 인시던트 -->
-  <div class="card">
-    <div class="card-hd"><div class="card-title">인시던트</div><div class="card-sub">4건 · 미처리 2건</div></div>
-    <div style="overflow-x:auto">
-      <table><thead><tr><th>품목</th><th>중요도</th><th>상태</th><th>등록일</th></tr></thead>
-      <tbody id="incidents-body"></tbody></table>
-    </div>
-  </div>
-
-  <!-- 요일×교대 히트맵 -->
-  <div class="card">
-    <div class="card-hd"><div class="card-title">요일 × 교대 업로드 현황</div><div class="card-sub">색상이 진할수록 업로드 건수 많음</div></div>
-    <div class="heatmap" id="hm-body"></div>
-  </div>
-
-  <!-- 2열: 연속처치 정산 + Two-Bin -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-    <div class="card">
-      <div class="card-hd"><div class="card-title">연속처치 정산 현황</div><div class="card-sub">이브닝 · 2026.05.22</div></div>
-      <div id="timer-settle-body"></div>
-      <div style="display:flex;justify-content:space-between;padding:.5rem 0;margin-top:.5rem;border-top:1px solid var(--bdr);font-size:.82rem;font-weight:700">
-        <span>합계</span><span style="font-family:var(--fm);color:var(--ok)">₩6,237</span>
+  <!-- ══════════════════════════════════════════
+       슬라이드 5: 산소 수가 계산기
+  ══════════════════════════════════════════════ -->
+  <section class="slide" id="slide-5">
+    <div class="pg-header" style="margin-bottom:.75rem">
+      <div>
+        <div class="pg-title">산소 수가 자동 계산</div>
+        <div class="pg-sub">Flow 구간별 수가 자동 합산 · 데모</div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-hd"><div class="card-title">Two-Bin 재고 현황</div><div class="card-sub">소모품 4종</div></div>
-      <div id="twobin-body"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card">
+        <div class="card-hd"><div class="card-title">Flow 기록</div></div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">이브닝 정산 · 301호</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.82rem">
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--div)">
+            <span style="font-family:var(--fm);color:var(--muted)">15:00</span>
+            <span>0.4 L/min</span>
+            <div style="width:60px;height:7px;background:var(--ok);border-radius:3px;align-self:center"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--div)">
+            <span style="font-family:var(--fm);color:var(--muted)">16:30</span>
+            <span>0.5 L/min</span>
+            <div style="width:75px;height:7px;background:var(--warn);border-radius:3px;align-self:center"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--div)">
+            <span style="font-family:var(--fm);color:var(--muted)">17:45</span>
+            <span>0.6 L/min</span>
+            <div style="width:90px;height:7px;background:var(--err);border-radius:3px;align-self:center"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.3rem 0">
+            <span style="font-family:var(--fm);color:var(--muted)">18:22</span>
+            <span style="color:var(--faint)">정산 시점</span>
+            <span>—</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="background:var(--surf2)">
+        <div class="card-hd"><div class="card-title">계산 결과</div></div>
+        <div style="display:flex;flex-direction:column;gap:.6rem;font-size:.82rem">
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--div)">
+            <span>15:00~16:30 · 0.4L</span>
+            <span style="font-family:var(--fm)">90분 → ₩162</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--div)">
+            <span>16:30~17:45 · 0.5L</span>
+            <span style="font-family:var(--fm)">75분 → ₩202</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--div)">
+            <span>17:45~18:22 · 0.6L</span>
+            <span style="font-family:var(--fm)">37분 → ₩100</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:.6rem 0;margin-top:.25rem;border-top:2px solid var(--bdr);font-weight:700">
+            <span>합계 (3h 22m)</span>
+            <span style="font-family:var(--fm);color:var(--ok);font-size:1rem">₩464</span>
+          </div>
+        </div>
+        <div style="margin-top:.75rem;padding:.6rem .8rem;background:var(--ok-hl);border-radius:var(--r-md);font-size:.73rem;color:var(--ok)">
+          ✓ EMR 청구 기준 자동 계산 완료 — 수기 오류 없음
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- 업로드 내역 -->
-  <div class="card">
-    <div class="card-hd"><div class="card-title">📂 업로드 내역 (예시)</div><div class="card-sub">최근 3건</div></div>
-    <div style="display:flex;flex-direction:column;gap:.4rem">
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:var(--surf2);border-radius:var(--r-md);font-size:.8rem">
-        <span style="font-family:var(--fm);color:var(--muted)">2026-05-22</span>
-        <span class="badge">간호처방집계</span>
-        <span class="badge-pur" style="font-size:.65rem">Day</span>
-        <span style="margin-left:auto;color:var(--ok)">✓ 완료</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:var(--surf2);border-radius:var(--r-md);font-size:.8rem">
-        <span style="font-family:var(--fm);color:var(--muted)">2026-05-21</span>
-        <span class="badge">불출증</span>
-        <span class="badge-pur" style="font-size:.65rem">Evening</span>
-        <span style="margin-left:auto;color:var(--ok)">✓ 완료</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;background:var(--surf2);border-radius:var(--r-md);font-size:.8rem">
-        <span style="font-family:var(--fm);color:var(--muted)">2026-05-20</span>
-        <span class="badge">비교분석</span>
-        <span class="badge-pur" style="font-size:.65rem">Night</span>
-        <span style="margin-left:auto;color:var(--ok)">✓ 완료</span>
-      </div>
-    </div>
-  </div>
 </main>
 </div>
+
 <script>
 document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
   const h = document.documentElement;
   const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
   h.dataset.theme = next;
   localStorage.setItem('eicu_theme', next);
-  if (trendChart) { trendChart.destroy(); trendChart = null; }
-  buildTrend(currentPeriod);
+  if (demoTrendChart) { demoTrendChart.destroy(); demoTrendChart = null; }
+  buildDemoTrend(currentDemoPeriod);
 });
 
 const gc = () => document.documentElement.dataset.theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 const tc = () => document.documentElement.dataset.theme === 'dark' ? '#8892a4' : '#64748b';
 
-let trendChart = null;
-let currentPeriod = 'monthly';
-
-const MONTHLY_DATA = {
-  labels: ['11월','12월','1월','2월','3월','4월'],
-  mismatch: [12.4, 10.1, 8.7, 7.2, 6.1, 4.8],
-  delay: [9.2, 7.8, 6.4, 5.1, 4.3, 3.2]
+// ===== DEMO DATA =====
+const MISMATCH_TREND = {
+  monthly:{ labels:['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05'], data:[71,68,65,61,58,67] },
+  weekly: { labels:['4/14주','4/21주','4/28주','5/5주','5/12주','5/19주'],       data:[69,72,64,58,61,67] },
 };
-const WEEKLY_DATA = {
-  labels: ['1주','2주','3주','4주'],
-  mismatch: [5.2, 4.8, 4.2, 3.9],
-  delay: [3.8, 3.4, 3.0, 2.7]
-};
+const DELAY_DATA = [
+  { label:'HFNC',    pct:18, color:'#f03e3e' },
+  { label:'인공호흡기', pct:9,  color:'#e67700' },
+  { label:'CRRT',    pct:6,  color:'#e67700' },
+  { label:'수혈',    pct:4,  color:'#206bc4' },
+  { label:'지속정주', pct:3,  color:'#4dabf7' },
+];
+const TWOBIN_DEMO = [
+  { item:'의료용 전극',    binA:3,  binB:10, max:30, status:'주의' },
+  { item:'석션 카테터',    binA:8,  binB:6,  max:18, status:'정상' },
+  { item:'5% 포도당 수액', binA:0,  binB:2,  max:14, status:'긴급' },
+  { item:'거즈 (대)',      binA:15, binB:10, max:30, status:'정상' },
+  { item:'IV 카테터 18G', binA:2,  binB:5,  max:20, status:'주의' },
+];
+const SETTLE_DEMO = [
+  { patientId:'301호', item:'산소',     start:'15:00', end:'17:30', min:150, charge:405 },
+  { patientId:'302호', item:'인공호흡기',start:'15:00', end:'19:00', min:240, charge:4800 },
+  { patientId:'305호', item:'산소',     start:'16:00', end:'18:22', min:142, charge:384 },
+  { patientId:'307호', item:'CRRT',    start:'15:00', end:'15:48', min:48,  charge:648 },
+];
+const CHECKLIST_DEMO = [
+  { item:'산소 수가 입력 확인', done:true },
+  { item:'인공호흡기 FiO₂ 변경 기록', done:true },
+  { item:'의료용 전극 불출증 대조', done:false },
+  { item:'5% 포도당 수액 재고 확인', done:false },
+  { item:'CRRT 회로 교환 수가 입력', done:true },
+  { item:'드레싱 처치 코스트 입력', done:false },
+];
+// =====================
 
-function switchPeriod(period) {
-  currentPeriod = period;
-  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
-  if (period === 'monthly') {
-    document.getElementById('tab-monthly')?.classList.add('active');
-    document.getElementById('trend-sub').textContent = '월별 · 최근 6개월';
-  } else {
-    document.getElementById('tab-weekly')?.classList.add('active');
-    document.getElementById('trend-sub').textContent = '주간 · 최근 4주';
-  }
-  if (trendChart) { trendChart.destroy(); trendChart = null; }
-  buildTrend(period);
+let demoTrendChart = null;
+let currentDemoPeriod = 'monthly';
+
+// ── 트렌드 차트 ──────────────────────────────────────
+function switchDemoPeriod(p) {
+  currentDemoPeriod = p;
+  document.getElementById('demo-tab-m').classList.toggle('active', p === 'monthly');
+  document.getElementById('demo-tab-w').classList.toggle('active', p === 'weekly');
+  document.getElementById('demo-trend-sub').textContent = p === 'weekly' ? '주간 · 최근 6주' : '월간 · 최근 6개월';
+  if (demoTrendChart) { demoTrendChart.destroy(); demoTrendChart = null; }
+  buildDemoTrend(p);
 }
 
-function buildTrend(period) {
-  const d = period === 'weekly' ? WEEKLY_DATA : MONTHLY_DATA;
-  trendChart = new Chart(document.getElementById('trendChart').getContext('2d'), {
+function buildDemoTrend(p) {
+  const td = MISMATCH_TREND[p] || MISMATCH_TREND.monthly;
+  demoTrendChart = new Chart(document.getElementById('demoTrendChart').getContext('2d'), {
     type: 'line',
     data: {
-      labels: d.labels,
+      labels: td.labels,
       datasets: [
-        { label: '전체 불일치율(%)', data: d.mismatch, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', tension: 0.4, fill: true, pointRadius: 4 },
-        { label: '연속형 지연율(%)', data: d.delay, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.06)', tension: 0.4, fill: false, pointRadius: 4 }
+        { label:'불일치율(%)', data:td.data, borderColor:'#206bc4', backgroundColor:'rgba(32,107,196,0.1)', tension:0.4, fill:true, pointRadius:4, borderWidth:2 },
+        { label:'목표치 (34%)', data:td.labels.map(()=>34), borderColor:'#f03e3e', borderDash:[6,4], tension:0, fill:false, pointRadius:0, borderWidth:1.5 }
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: tc(), boxWidth: 12, font: { size: 11 } } } },
-      scales: {
-        x: { grid: { color: gc() }, ticks: { color: tc() } },
-        y: { grid: { color: gc() }, ticks: { color: tc(), callback: v => v + '%' } }
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:tc(), boxWidth:12, font:{size:11} } } },
+      scales:{
+        x:{ grid:{color:gc()}, ticks:{color:tc()} },
+        y:{ min:0, max:100, grid:{color:gc()}, ticks:{color:tc(), callback:v=>v+'%'} }
       }
     }
   });
 }
 
-// 처치 유형별 반영 지연율
-const DELAY_DATA = [
-  { label: 'HFNC', pct: 18, color: '#ef4444' },
-  { label: '인공호흡기', pct: 9, color: '#f59e0b' },
-  { label: 'CRRT', pct: 6, color: '#f59e0b' },
-  { label: '수혈', pct: 4, color: '#10b981' },
-  { label: '지속정주', pct: 3, color: '#10b981' }
-];
-const barsEl = document.getElementById('delay-bars');
-DELAY_DATA.forEach(item => {
-  barsEl.insertAdjacentHTML('beforeend', `
+// ── 처치 유형별 지연율 바 ────────────────────────────
+function buildDelayBars() {
+  const el = document.getElementById('demo-delay-bars');
+  if (!el) return;
+  el.innerHTML = DELAY_DATA.map(d => `
     <div style="display:flex;align-items:center;gap:.75rem;padding:.3rem 0;font-size:.82rem">
-      <span style="width:80px;flex-shrink:0">${item.label}</span>
+      <span style="width:72px;flex-shrink:0">${d.label}</span>
       <div style="flex:1;height:10px;background:var(--surf2);border-radius:5px;overflow:hidden">
-        <div style="width:${item.pct * 3.5}%;height:100%;background:${item.color};border-radius:5px;transition:width .4s"></div>
+        <div style="width:${d.pct * 3.5}%;height:100%;background:${d.color};border-radius:5px"></div>
       </div>
-      <span style="font-family:var(--fm);font-weight:700;color:${item.color};width:32px;text-align:right">${item.pct}%</span>
-    </div>`);
-});
-
-// 체크리스트
-const CHK = [
-  { text: '불출증 수령 확인', done: true },
-  { text: 'HFNC 유량 처방 대조', done: true },
-  { text: '인공호흡기 회로 점검', done: true },
-  { text: 'CRRT 치료액 재고 확인', done: true },
-  { text: '이브닝 지속정주 정산', done: true },
-  { text: '수혈 혈액제제 처방 비교', done: true },
-  { text: '소모품 Two-Bin 점검', done: true },
-  { text: '미처리 인시던트 검토', done: false }
-];
-const chkEl = document.getElementById('chk-list');
-CHK.forEach(c => {
-  chkEl.insertAdjacentHTML('beforeend', `
-    <div class="chk-row">
-      <span style="color:${c.done ? 'var(--ok)' : 'var(--faint)';font-size:1rem}">${c.done ? '✓' : '○'}</span>
-      <span style="color:${c.done ? 'var(--txt)' : 'var(--muted)'};text-decoration:${c.done ? 'none' : 'none'}">${c.text}</span>
-      ${c.done ? '<span class="tag tag-g" style="margin-left:auto;font-size:.6rem">완료</span>' : '<span class="tag tag-y" style="margin-left:auto;font-size:.6rem">미완료</span>'}
-    </div>`);
-});
-
-// Top5
-const TOP5 = [
-  { name: '의료용 전극 패드', cnt: 8 },
-  { name: '드레싱 세트', cnt: 5 },
-  { name: '알코올 솜', cnt: 4 },
-  { name: 'IV카테터', cnt: 3 },
-  { name: 'Syringe 50mL', cnt: 2 }
-];
-const top5El = document.getElementById('top5-list');
-TOP5.forEach((item, i) => {
-  const color = i === 0 ? 'var(--err)' : i <= 1 ? 'var(--warn)' : 'var(--ok)';
-  top5El.insertAdjacentHTML('beforeend', `
-    <div class="top5-item">
-      <span class="top5-rank">${i + 1}</span>
-      <span style="flex:1">${item.name}</span>
-      <span style="font-family:var(--fm);font-weight:700;color:${color}">${item.cnt}회</span>
-    </div>`);
-});
-
-// 인시던트
-const INCIDENTS = [
-  { name: '의료용 전극 패드', sev: '높음', status: '미처리', date: '2026-05-22' },
-  { name: '드레싱 세트', sev: '중간', status: '미처리', date: '2026-05-21' },
-  { name: '산소 Flow', sev: '낮음', status: '해결', date: '2026-05-20' },
-  { name: 'Syringe Pump', sev: '낮음', status: '해결', date: '2026-05-19' }
-];
-const incBody = document.getElementById('incidents-body');
-INCIDENTS.forEach(inc => {
-  const sevClass = inc.sev === '높음' ? 'badge-high' : inc.sev === '중간' ? 'badge-mid' : 'badge-low';
-  const stClass = inc.status === '해결' ? 'badge-resolved' : 'badge-pending';
-  incBody.insertAdjacentHTML('beforeend', `
-    <tr>
-      <td>${inc.name}</td>
-      <td><span class="incident-badge ${sevClass}">${inc.sev}</span></td>
-      <td><span class="incident-badge ${stClass}">${inc.status}</span></td>
-      <td style="font-family:var(--fm);color:var(--muted)">${inc.date}</td>
-    </tr>`);
-});
-
-// 히트맵
-const DAYS = ['월','화','수','목','금','토','일'];
-const DUTY_LABELS = ['D교대','E교대','N교대'];
-const HM_DATA = [
-  [4,5,3,4,5,2,1],
-  [3,4,4,3,4,3,2],
-  [2,2,3,2,3,1,1]
-];
-const maxVal = Math.max(...HM_DATA.flat(), 1);
-function heatColor(v, max) {
-  if (v === 0) return 'rgba(100,116,139,0.12)';
-  const r = v / max;
-  if (r < 0.33) return `rgba(59,130,246,${0.3 + r * 0.5})`;
-  if (r < 0.66) return `rgba(245,158,11,${0.4 + r * 0.4})`;
-  return `rgba(239,68,68,${0.45 + r * 0.4})`;
+      <span style="font-family:var(--fm);font-weight:700;color:${d.color};width:32px;text-align:right">${d.pct}%</span>
+    </div>`).join('');
 }
-const hmEl = document.getElementById('hm-body');
-hmEl.insertAdjacentHTML('beforeend', '<div></div>');
-DAYS.forEach(d => hmEl.insertAdjacentHTML('beforeend', `<div class="hm-head">${d}</div>`));
-DUTY_LABELS.forEach((lbl, si) => {
-  hmEl.insertAdjacentHTML('beforeend', `<div class="hm-lbl">${lbl}</div>`);
-  DAYS.forEach((_, di) => {
-    const v = HM_DATA[si][di];
-    hmEl.insertAdjacentHTML('beforeend',
-      `<div class="hm-cell" style="background:${heatColor(v, maxVal)}" title="${lbl} ${DAYS[di]}: ${v}건">${v}건</div>`);
-  });
+
+// ── Two-Bin 테이블 ───────────────────────────────────
+function buildTwoBinTable() {
+  const tbody = document.getElementById('demo-twobin-body');
+  if (!tbody) return;
+  const statusColor = { 정상:'var(--ok)', 주의:'var(--warn)', 긴급:'var(--err)' };
+  const tagClass = { 정상:'tag-g', 주의:'tag-y', 긴급:'tag-r' };
+  const sorted = [...TWOBIN_DEMO].sort((a,b) => (a.status==='긴급'?-1:b.status==='긴급'?1:0));
+  tbody.innerHTML = sorted.map(r => {
+    const aW = Math.round((r.binA / r.max) * 100);
+    const bW = Math.round((r.binB / r.max) * 100);
+    const bc = statusColor[r.status] || 'var(--muted)';
+    const bg = r.status === '긴급' ? 'background:#fff5f5;' : '';
+    const miniBar = (w, c) => `<div style="display:flex;align-items:center;gap:4px">
+      <div style="width:70px;height:8px;background:var(--surfoff);border-radius:4px;overflow:hidden">
+        <div style="width:${w}%;height:100%;background:${c};border-radius:4px"></div>
+      </div>
+      <span style="font-family:var(--fm);font-size:.72rem">${w === 0 ? '소진' : (w > 50 ? '✅' : '🟡')}</span>
+    </div>`;
+    return `<tr style="${bg}">
+      <td style="font-weight:600${r.status==='긴급'?';color:var(--err)':''}">${r.item}${r.status==='긴급'?' <span class="blink">⚠️</span>':''}</td>
+      <td>${miniBar(aW, bc)} <span style="font-family:var(--fm);font-size:.7rem;color:var(--muted)">${r.binA}개</span></td>
+      <td>${miniBar(bW, bc)} <span style="font-family:var(--fm);font-size:.7rem;color:var(--muted)">${r.binB}개</span></td>
+      <td style="font-family:var(--fm)">${r.max}개</td>
+      <td><span class="tag ${tagClass[r.status]||'tag-b'}">${r.status}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 정산 테이블 ──────────────────────────────────────
+function buildSettleTable() {
+  const tbody = document.getElementById('demo-settle-body');
+  if (!tbody) return;
+  tbody.innerHTML = SETTLE_DEMO.map(s => `
+    <tr>
+      <td>${s.patientId}</td>
+      <td>${s.item}</td>
+      <td style="font-family:var(--fm)">${s.start}</td>
+      <td style="font-family:var(--fm)">${s.end}</td>
+      <td style="font-family:var(--fm)">${s.min}분</td>
+      <td style="font-family:var(--fm);color:var(--ok);font-weight:700;text-align:right">₩${s.charge.toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+// ── 체크리스트 ───────────────────────────────────────
+function buildChecklist() {
+  const el = document.getElementById('demo-chk-list');
+  if (!el) return;
+  el.innerHTML = CHECKLIST_DEMO.map(c => `
+    <div class="chk">
+      <div class="chk-ico ${c.done?'done':'pend'}">
+        ${c.done
+          ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        }
+      </div>
+      <span class="chk-txt" style="${c.done?'text-decoration:line-through;color:var(--muted)':'color:var(--err)'}">
+        ${c.done?'':'⚠️ '}${c.item}
+      </span>
+      <span class="chk-time">${c.done?'완료':'미완료'}</span>
+    </div>`).join('');
+}
+
+// ── 발표 모드 슬라이드 제어 ──────────────────────────
+const slides = () => Array.from(document.querySelectorAll('.slide'));
+let currentSlide = 0;
+
+function updateSlideCounter() {
+  const all = slides();
+  document.getElementById('slide-counter').textContent = `${currentSlide + 1} / ${all.length}`;
+}
+
+function showSlide(idx) {
+  const all = slides();
+  if (idx < 0 || idx >= all.length) return;
+  all.forEach(s => s.classList.remove('active'));
+  all[idx].classList.add('active');
+  currentSlide = idx;
+  updateSlideCounter();
+}
+
+function nextSlide() { showSlide(currentSlide + 1); }
+function prevSlide() { showSlide(currentSlide - 1); }
+
+function enterPresentationMode() {
+  document.body.classList.add('presentation-mode');
+  document.getElementById('slide-nav').style.display = 'flex';
+  currentSlide = 0;
+  showSlide(0);
+}
+
+function exitPresentationMode() {
+  document.body.classList.remove('presentation-mode');
+  document.getElementById('slide-nav').style.display = 'none';
+  slides().forEach(s => s.classList.add('active'));
+}
+
+document.addEventListener('keydown', e => {
+  if (!document.body.classList.contains('presentation-mode')) return;
+  if (e.key === 'Escape') exitPresentationMode();
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextSlide();
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   prevSlide();
 });
 
-// 연속처치 정산
-const SETTLE = [
-  { room: '101호', type: '산소', hours: 8, price: 1240 },
-  { room: '103호', type: '인공호흡기', hours: 12, price: 2890 },
-  { room: '107호', type: 'CRRT', hours: 6, price: 1580 },
-  { room: '112호', type: '정주펌프', hours: 4, price: 527 }
-];
-const settleEl = document.getElementById('timer-settle-body');
-SETTLE.forEach(s => {
-  settleEl.insertAdjacentHTML('beforeend', `
-    <div class="settle-row">
-      <span>${s.room} <span style="color:var(--muted);font-size:.75rem">· ${s.type}</span></span>
-      <span style="color:var(--muted);font-size:.75rem">${s.hours}시간</span>
-      <span style="font-family:var(--fm);font-weight:700;color:var(--ok)">₩${s.price.toLocaleString()}</span>
-    </div>`);
+// ── 초기화 ──────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildDemoTrend('monthly');
+  buildDelayBars();
+  buildTwoBinTable();
+  buildSettleTable();
+  buildChecklist();
 });
-
-// Two-Bin
-const TWOBIN = [
-  { name: '거즈', status: '정상', color: 'var(--ok)' },
-  { name: '알코올솜', status: 'Bin B 사용', color: 'var(--warn)' },
-  { name: '면봉', status: '즉시 보충', color: 'var(--err)' },
-  { name: '수액세트', status: '정상', color: 'var(--ok)' }
-];
-const twobinEl = document.getElementById('twobin-body');
-TWOBIN.forEach(t => {
-  twobinEl.insertAdjacentHTML('beforeend', `
-    <div class="twobin-row">
-      <span>${t.name}</span>
-      <span style="font-weight:600;font-size:.8rem;color:${t.color}">${t.status}</span>
-    </div>`);
-});
-
-// 초기 차트
-buildTrend('monthly');
 </script>
 </body>
 </html>

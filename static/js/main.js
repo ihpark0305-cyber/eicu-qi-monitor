@@ -1,3 +1,56 @@
+// ===== DEMO DATA (하드코딩) =====
+// 실측값 반영 시 이 블록만 수정하면 됩니다
+// ================================
+const CHECKLIST_DEMO = [
+  { id:1, item:'산소 수가 입력 확인', shift:'D', done:true },
+  { id:2, item:'인공호흡기 FiO₂ 변경 기록', shift:'D', done:true },
+  { id:3, item:'의료용 전극 불출증 대조', shift:'D', done:false },
+  { id:4, item:'5% 포도당 수액 재고 확인', shift:'D', done:false },
+  { id:5, item:'CRRT 회로 교환 수가 입력', shift:'D', done:true },
+  { id:6, item:'드레싱 처치 코스트 입력', shift:'D', done:false },
+];
+const TOP5_DEMO = [
+  { rank:1, item:'의료용 전극', prescribed:24, dispensed:8,  diff:-16, status:'누락' },
+  { rank:2, item:'5% 포도당 수액', prescribed:12, dispensed:18, diff:+6,  status:'과다' },
+  { rank:3, item:'IV 카테터 18G', prescribed:10, dispensed:6,  diff:-4,  status:'누락' },
+  { rank:4, item:'석션 카테터',    prescribed:8,  dispensed:5,  diff:-3,  status:'누락' },
+  { rank:5, item:'거즈 (대)',      prescribed:30, dispensed:27, diff:-3,  status:'누락' },
+];
+const INCIDENTS_DEMO = [
+  { item:'산소 수가 미입력',  cause:'Cost미처리', shift:'D', priority:'높음', resolved:false, date:'2026-05-22' },
+  { item:'전극 불출증 불일치', cause:'출고불일치', shift:'E', priority:'높음', resolved:false, date:'2026-05-21' },
+  { item:'FiO₂ 변경 미기록', cause:'FiO₂미변경', shift:'N', priority:'중간', resolved:true,  date:'2026-05-21' },
+  { item:'수액 과다 적재',   cause:'입력누락',   shift:'D', priority:'낮음', resolved:true,  date:'2026-05-20' },
+];
+const SETTLE_DEMO = [
+  { patientId:'301호', item:'산소',     start:'15:00', end:'17:30', min:150, charge:405 },
+  { patientId:'302호', item:'인공호흡기',start:'15:00', end:'19:00', min:240, charge:4800 },
+  { patientId:'305호', item:'산소',     start:'16:00', end:'18:22', min:142, charge:384 },
+  { patientId:'307호', item:'CRRT',    start:'15:00', end:'15:48', min:48,  charge:648 },
+];
+const TWOBIN_DEMO = [
+  { item:'의료용 전극',    binA:3,  binB:10, max:30, status:'주의' },
+  { item:'석션 카테터',    binA:8,  binB:6,  max:18, status:'정상' },
+  { item:'5% 포도당 수액', binA:0,  binB:2,  max:14, status:'긴급' },
+  { item:'거즈 (대)',      binA:15, binB:10, max:30, status:'정상' },
+  { item:'IV 카테터 18G', binA:2,  binB:5,  max:20, status:'주의' },
+];
+const HEATMAP_DEMO = {
+  D:[8,7,9,5,8,3,2],
+  E:[6,8,7,9,6,4,3],
+  N:[3,2,4,3,2,1,1],
+};
+const MISMATCH_TREND = {
+  monthly:{ labels:['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05'], data:[71,68,65,61,58,67] },
+  weekly: { labels:['4/14주','4/21주','4/28주','5/5주','5/12주','5/19주'],       data:[69,72,64,58,61,67] },
+};
+const DELAY_BY_TYPE = {
+  labels:['산소','인공호흡기','CRRT','지속정주','드레싱','수혈'],
+  values:[34,28,19,12,6,1],
+  colors:['#f03e3e','#e67700','#e67700','#206bc4','#4dabf7','#74c0fc'],
+};
+// ================================
+
 /* ─── Theme ─────────────────────────────────────────────── */
 (function(){
   const t=document.querySelector('[data-theme-toggle]'),r=document.documentElement;
@@ -60,52 +113,40 @@ function anim(el,end,dur,fmt){
   })(performance.now());
 }
 
-/* ─── Load trend data from API ───────────────────────────── */
+/* ─── Load trend data (DEMO MODE) ───────────────────────── */
 let currentPeriod='monthly';
 
 async function loadTrend(period){
   currentPeriod=period;
-  const res=await fetch(`/api/trend?period=${period}`);
-  const d=await res.json();
-  chart.data.labels=d.labels||[];
-  chart.data.datasets[0].data=d.total||[];
-  chart.data.datasets[1].data=d.continuous||[];
+  // [DEMO MODE] API 연동 비활성화
+  // const res=await fetch(`/api/trend?period=${period}`);
+  // const d=await res.json();
+  const td=MISMATCH_TREND[period]||MISMATCH_TREND.monthly;
+  chart.data.labels=td.labels;
+  chart.data.datasets[0].data=td.data;
+  chart.data.datasets[1].data=td.labels.map(()=>34); // 목표선 34%
+  chart.options.scales.y.max=100;
+  chart.options.scales.y.ticks.callback=v=>v+'%';
   chart.update('active');
-  document.getElementById('chart-sub').textContent=d.sub||'파일 업로드 후 추이가 표시됩니다';
-  const k=d.kpi||{};
-  // 데이터 없으면 KPI 카드에 "—" 유지
-  if(Object.keys(k).length===0){
-    document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 반영 지연 추정액':'입력-청구 반영 차이 추정액';
-    const alertBox=document.getElementById('alert-box');
-    const alertTxt=document.getElementById('alert-text');
-    alertBox.style.display='flex';
-    alertTxt.innerHTML='파일을 업로드하면 KPI 지표가 업데이트됩니다. <strong>CSV 또는 이미지 파일을 업로드하세요.</strong>';
-    return;
-  }
-  anim(document.getElementById('v1'),k.match_rate||0,800);
-  anim(document.getElementById('v2'),k.evening_rate||0,800);
-  anim(document.getElementById('v3'),k.checklist_rate||0,800,'int');
-  anim(document.getElementById('v4'),k.delay_cost||0,800,'money');
-  const pLabel=k.period_label||'';
-  ['v1-p','v2-p','v3-p','v4-p'].forEach(id=>document.getElementById(id).textContent=pLabel);
-  document.getElementById('v1-d').textContent=(k.delta_match>0?'↑ +':'↓ ')+Math.abs(k.delta_match||0)+'%p';
-  document.getElementById('v1-d').className=k.delta_match>0?'d-dn':'d-up';
-  document.getElementById('v2-d').textContent=(k.delta_evening>0?'↑ +':'↓ ')+Math.abs(k.delta_evening||0)+'%p';
-  document.getElementById('v2-d').className=k.delta_evening>0?'d-dn':'d-up';
-  document.getElementById('v3-d').textContent=(k.delta_checklist>0?'↑ +':'↓ ')+Math.abs(k.delta_checklist||0)+'%p';
-  document.getElementById('v4-d').textContent=(k.delta_delay_cost>0?'↑ +₩':'↓ ₩')+Math.abs(k.delta_delay_cost||0).toLocaleString();
-  document.getElementById('v4-d').className=(k.delta_delay_cost||0)<0?'d-up':'d-dn';
-  document.getElementById('v4-tgt').textContent=period==='weekly'?'이번 주 반영 지연 추정액':'입력-청구 반영 차이 추정액';
-
+  const sub=document.getElementById('chart-sub');
+  if(sub) sub.textContent=period==='weekly'?'주간 · 최근 6주':'월간 · 최근 6개월';
+  // KPI 카드 데모 값
+  const v1=document.getElementById('v1');
+  const v2=document.getElementById('v2');
+  const v3=document.getElementById('v3');
+  const v4=document.getElementById('v4');
+  if(v1) anim(v1,33,800);
+  if(v2) anim(v2,67,800);
+  if(v3) anim(v3,50,800,'int');
+  if(v4) anim(v4,32400,800,'money');
+  const d1=document.getElementById('v1-d'); if(d1){d1.textContent='↓ -3.1%p';d1.className='d-up';}
+  const d2=document.getElementById('v2-d'); if(d2){d2.textContent='↑ +2.4%p';d2.className='d-dn';}
+  const d3=document.getElementById('v3-d'); if(d3){d3.textContent='3 / 6 완료';}
+  const d4=document.getElementById('v4-d'); if(d4){d4.textContent='↓ -₩12,400';d4.className='d-up';}
   const alertBox=document.getElementById('alert-box');
   const alertTxt=document.getElementById('alert-text');
-  if((k.evening_rate||0)>5){
-    alertBox.style.display='flex';
-    alertTxt.innerHTML=`연속형 항목(산소·HFNC·인공호흡기)은 EMR 입력과 실제 전산 반영이 분리될 수 있어, <strong>이브닝 정산 확인이 필요합니다.</strong>`;
-  } else {
-    alertBox.style.display='flex';
-    alertTxt.innerHTML='EMR 입력이 곧바로 청구 완료를 의미하지 않으므로, <strong>입력-반영 매칭 확인</strong>이 필요합니다.';
-  }
+  if(alertBox){alertBox.style.display='flex';}
+  if(alertTxt){alertTxt.innerHTML='연속형 항목(산소·HFNC·인공호흡기)은 EMR 입력과 실제 전산 반영이 분리될 수 있어, <strong>이브닝 정산 확인이 필요합니다.</strong>';}
 }
 
 /* ─── Chart tabs ─────────────────────────────────────────── */
@@ -126,14 +167,22 @@ document.querySelectorAll('.ptab').forEach(tab=>{
   });
 });
 
-/* ─── Load checklist ─────────────────────────────────────── */
-async function loadChecklist(){
-  const res=await fetch('/api/checklist');
-  const d=await res.json();
-  document.getElementById('chk-meta').textContent=`${d.date} ${d.shift}`;
-  document.getElementById('chk-count').textContent=`${d.completed} / ${d.total} 완료`;
+/* ─── Load checklist (DEMO MODE) ────────────────────────── */
+// [DEMO MODE] API 연동 비활성화
+// async function loadChecklist(){ const res=await fetch('/api/checklist'); ... }
+function renderChecklistDemo(){
+  const meta=document.getElementById('chk-meta');
+  const count=document.getElementById('chk-count');
   const ul=document.getElementById('chk-list');
-  ul.innerHTML=d.items.map(item=>`
+  if(!ul)return;
+  const done=CHECKLIST_DEMO.filter(c=>c.done).length;
+  if(meta) meta.textContent='2026-05-22 D교대';
+  if(count) count.textContent=`${done} / ${CHECKLIST_DEMO.length} 완료`;
+  // 프로그레스바 업데이트
+  const pct=Math.round(done/CHECKLIST_DEMO.length*100);
+  const pgFill=document.getElementById('chk-progress');
+  if(pgFill) pgFill.style.width=pct+'%';
+  ul.innerHTML=CHECKLIST_DEMO.map(item=>`
     <div class="chk">
       <div class="chk-ico ${item.done?'done':'pend'}">
         ${item.done
@@ -141,28 +190,90 @@ async function loadChecklist(){
           :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
         }
       </div>
-      <span class="chk-txt" ${item.done?'':'style="color:var(--warn)"'}>${item.text}</span>
-      <span class="chk-time">${item.time}</span>
+      <span class="chk-txt" ${item.done?'style="text-decoration:line-through;color:var(--muted)"':'style="color:var(--err)"'}>${item.done?'':'⚠️ '}${item.item}</span>
+      <span class="chk-time">${item.shift}교대</span>
     </div>
   `).join('');
 }
+async function loadChecklist(){ renderChecklistDemo(); }
 
-/* ─── Load incidents ─────────────────────────────────────── */
-const severityTag={high:'<span class="tag tag-r">높음</span>',medium:'<span class="tag tag-y">중간</span>',low:'<span class="tag tag-g">낮음</span>'};
-const statusTag={review:'<span class="tag tag-y">검토중</span>',done:'<span class="tag tag-g">완료</span>',training:'<span class="tag tag-b">교육중</span>'};
-
-async function loadIncidents(){
-  const res=await fetch('/api/incidents');
-  const d=await res.json();
-  document.getElementById('incidents-body').innerHTML=d.items.map(i=>`
-    <tr>
-      <td>${i.item}</td>
+/* ─── Load incidents (DEMO MODE) ────────────────────────── */
+// [DEMO MODE] API 연동 비활성화
+// async function loadIncidents(){ const res=await fetch('/api/incidents'); ... }
+function renderIncidentsDemo(){
+  const tbody=document.getElementById('incidents-body');
+  if(!tbody)return;
+  const priorityTag={높음:'<span class="tag tag-r">높음</span>',중간:'<span class="tag tag-y">중간</span>',낮음:'<span class="tag tag-g">낮음</span>'};
+  tbody.innerHTML=INCIDENTS_DEMO.map(i=>`
+    <tr style="${i.resolved?'opacity:.55;':''}${!i.resolved?'background:rgba(254,243,199,.35)':''}">
+      <td style="${i.resolved?'text-decoration:line-through':''}">${i.item}</td>
       <td>${i.cause}</td>
       <td style="font-family:'JetBrains Mono',monospace">${i.shift}</td>
-      <td>${severityTag[i.severity]||''}</td>
-      <td>${statusTag[i.status]||''}</td>
+      <td>${priorityTag[i.priority]||''}</td>
+      <td>${i.resolved?'<span class="tag tag-g">해결</span>':'<span class="tag tag-r">미처리</span>'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--muted)">${i.date}</td>
     </tr>
   `).join('');
+}
+async function loadIncidents(){ renderIncidentsDemo(); }
+
+/* ─── Render settle demo ─────────────────────────────────── */
+function renderSettleDemo(){
+  const tbody=document.getElementById('timer-settle-body');
+  if(!tbody)return;
+  tbody.innerHTML=SETTLE_DEMO.map(s=>`
+    <tr>
+      <td>${s.patientId}</td>
+      <td>${s.item}</td>
+      <td style="font-family:var(--fm)">${s.start}</td>
+      <td style="font-family:var(--fm)">${s.end}</td>
+      <td style="font-family:var(--fm)">${s.min}분</td>
+      <td style="font-family:var(--fm);color:var(--ok);font-weight:700;text-align:right">₩${s.charge.toLocaleString()}</td>
+    </tr>
+  `).join('');
+}
+
+/* ─── Render Two-Bin demo ────────────────────────────────── */
+function renderTwoBinDemo(){
+  const tbody=document.getElementById('twobin-body');
+  const alertDiv=document.getElementById('twobin-alert');
+  if(!tbody)return;
+  const statusColor={정상:'var(--ok)',주의:'var(--warn)',긴급:'var(--err)'};
+  const tagClass={정상:'tag-g',주의:'tag-y',긴급:'tag-r'};
+  const urgent=TWOBIN_DEMO.filter(r=>r.status==='긴급');
+  if(alertDiv&&urgent.length){
+    alertDiv.style.display='flex';
+    alertDiv.innerHTML=urgent.map(u=>`🔴 긴급: <strong>${u.item}</strong> Bin A 소진 — 즉시 보충 필요`).join(' &nbsp;·&nbsp; ');
+  }
+  // Sort: 긴급 먼저
+  const sorted=[...TWOBIN_DEMO].sort((a,b)=>(a.status==='긴급'?-1:b.status==='긴급'?1:0));
+  tbody.innerHTML=sorted.map(r=>{
+    const aW=Math.round((r.binA/r.max)*100);
+    const bW=Math.round((r.binB/r.max)*100);
+    const bg=r.status==='긴급'?'background:#fff5f5;':'';
+    const bc=statusColor[r.status]||'var(--muted)';
+    return `<tr style="${bg}">
+      <td style="font-weight:600${r.status==='긴급'?';color:var(--err)':''}">${r.item}${r.status==='긴급'?' <span class="blink">⚠️</span>':''}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div style="width:60px;height:8px;background:var(--surfoff);border-radius:4px;overflow:hidden">
+            <div style="width:${aW}%;height:100%;background:${bc};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-family:var(--fm);font-size:.7rem">${r.binA}</span>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div style="width:60px;height:8px;background:var(--surfoff);border-radius:4px;overflow:hidden">
+            <div style="width:${bW}%;height:100%;background:${bc};border-radius:4px;transition:width .4s"></div>
+          </div>
+          <span style="font-family:var(--fm);font-size:.7rem">${r.binB}</span>
+        </div>
+      </td>
+      <td style="font-family:var(--fm)">${r.max}</td>
+      <td><span class="tag ${tagClass[r.status]||'tag-b'}">${r.status}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 /* ─── Flow calc ──────────────────────────────────────────── */
@@ -1269,6 +1380,10 @@ renderHandoverBanner();
 buildTop5();
 renderMaxList();
 renderUploadHistory();
+// DEMO: incidents, settle, twobin demo data
+renderIncidentsDemo();
+renderSettleDemo();
+renderTwoBinDemo();
 
 // meta-date 기본값 오늘
 const _md = document.getElementById('meta-date');
