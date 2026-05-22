@@ -123,6 +123,21 @@ def effects():
 def demo():
     return render_template("demo.html")
 
+@app.route("/edit")
+def edit():
+    return render_template("edit.html")
+
+@app.route("/api/read-excel", methods=["POST"])
+def read_excel():
+    file = request.files.get("file")
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+    df, err = read_df(file)
+    if err:
+        return jsonify({"error": err}), 400
+    df = df.fillna("")
+    return jsonify({"columns": df.columns.tolist(), "rows": df.to_dict("records")})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=False, host="0.0.0.0", port=port)

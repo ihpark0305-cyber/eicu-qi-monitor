@@ -616,43 +616,52 @@ function switchUploadTab(tab) {
 
 /* ─── Image OCR Upload ───────────────────────────────────── */
 async function handleImageUpload() {
-  const file = document.getElementById('upload-image').files[0];
-  if (!file) { alert('이미지 파일을 선택해주세요.'); return; }
+  const files = Array.from(document.getElementById('upload-image').files);
+  if (!files.length) { alert('이미지 파일을 선택해주세요.'); return; }
 
   const date    = document.getElementById('meta-date').value    || new Date().toISOString().slice(0,10);
   const doctype = document.getElementById('meta-doctype').value;
   const duty    = document.getElementById('meta-duty').value;
 
-  if (!checkDuplicate(date, doctype, duty)) return;
-
   const st = document.getElementById('upload-status');
-  st.textContent = '⏳ AI가 이미지를 읽는 중...';
+  window._currentMeta = { date, doctype, duty, memo: document.getElementById('meta-memo').value };
 
-  const form = new FormData();
-  form.append('file', file);
+  const allItems = [];
+  let manualMode = false;
 
-  try {
-    const res = await fetch('/api/ocr-upload', { method: 'POST', body: form });
-    const d   = await res.json();
-
-    if (d.error) {
-      st.textContent = '❌ ' + d.error;
-      if (!d.manual_mode) return;
+  for (let i = 0; i < files.length; i++) {
+    st.textContent = `⏳ AI 분석 중... (${i + 1}/${files.length}장)`;
+    const form = new FormData();
+    form.append('file', files[i]);
+    try {
+      const res = await fetch('/api/ocr-upload', { method: 'POST', body: form });
+      const d   = await res.json();
+      if (d.error && !d.manual_mode) { st.textContent = `❌ ${files[i].name}: ${d.error}`; continue; }
+      if (d.manual_mode) { manualMode = true; }
+      else { allItems.push(...(d.items || [])); }
+    } catch(e) {
+      st.textContent = `❌ 네트워크 오류 (${files[i].name}): ${e.message}`; continue;
     }
-    window._currentMeta = {
-      date, doctype, duty,
-      memo: document.getElementById('meta-memo').value
-    };
-    if (d.manual_mode) {
-      renderOcrTable([], true);
-      if (!d.error) st.textContent = '✏️ 수동 입력 모드 — 직접 입력 후 확정해주세요.';
-    } else {
-      renderOcrTable(d.items || [], false);
-      st.textContent = `✓ ${d.count}개 항목 추출 완료 — 수정 후 "분석 확정" 클릭`;
-    }
-  } catch(e) {
-    st.textContent = '❌ 네트워크 오류: ' + e.message;
   }
+
+  renderOcrTable(allItems, manualMode);
+  if (manualMode) {
+    st.textContent = '✏️ 수동 입력 모드 — 직접 입력 후 확정해주세요.';
+  } else {
+    st.textContent = `✓ ${files.length}장 처리 완료 · 총 ${allItems.length}개 항목 추출 — 수정 후 "분석 확정" 클릭`;
+  }
+}
+
+function resetTodayKpi() {
+  if (!confirm('오늘 업로드 집계(총 업로드 / 추출 완료)를 0으로 초기화할까요?\n다른 날짜 기록은 유지됩니다.')) return;
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.removeItem('daily_summary_' + today);
+  _updateSummaryCard(0, 0, 0, 0);
+  ['sum-uploads','sum-extracted','sum-needs-review','sum-overstock','sum-evening'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '0';
+  });
+  showToast('오늘 집계가 초기화되었습니다.', 'ok', 2500);
 }
 
 /* ─── Duplicate Upload Check ────────────────────────────── */

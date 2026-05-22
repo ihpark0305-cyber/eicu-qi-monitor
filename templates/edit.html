@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>엑셀 직접 수정 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:900px){.edit-grid{grid-template-columns:1fr}}
+.edit-panel{display:flex;flex-direction:column;gap:.75rem}
+.edit-table-wrap{overflow:auto;max-height:420px;border:1px solid var(--bdr);border-radius:var(--r-md)}
+.edit-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.edit-table th{position:sticky;top:0;background:var(--surf2);padding:.4rem .6rem;text-align:left;font-weight:600;border-bottom:1px solid var(--bdr);white-space:nowrap}
+.edit-table td{padding:.25rem .3rem;border-bottom:1px solid var(--div)}
+.edit-table td input{width:100%;background:transparent;border:none;color:inherit;font:inherit;font-size:.77rem;padding:.15rem .2rem}
+.edit-table td input:focus{outline:1px solid var(--pri);border-radius:2px;background:var(--pri-hl)}
+.edit-table tr:hover td{background:var(--surf2)}
+.edit-table .del-btn{background:none;border:none;color:var(--err);cursor:pointer;font-size:.75rem;padding:0 .3rem}
+.panel-title{font-weight:700;font-size:.88rem}
+.panel-sub{font-size:.72rem;color:var(--muted)}
+.action-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.empty-tip{padding:2rem;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.8}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#3b82f6" fill-opacity="0.15"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>EICU QI Monitor</span>
+    </div>
+    <span class="badge">중앙대병원 EICU · 13병상</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="theme-btn" data-theme-toggle title="테마 변경">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+<nav class="sidebar">
+  <div class="nav-sec">모니터링</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
+  <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
+  <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
+  <div class="nav-sec">발표용</div>
+  <a class="nav-item" href="/demo" style="border-left:2px solid var(--pur)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span style="color:var(--pur)">발표용 데모</span><span class="badge-pur" style="margin-left:auto;font-size:.6rem">DEMO</span></a>
+  <div class="nav-sec">데이터 편집</div>
+  <a class="nav-item active" href="/edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>엑셀 직접 수정</a>
+  <div class="nav-sec">관리</div>
+  <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
+  <a class="nav-item" href="/effects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>기대 효과</a>
+</nav>
+<main class="main">
+  <div class="pg-header">
+    <div>
+      <div class="pg-title">엑셀 직접 수정</div>
+      <div class="pg-sub">업로드한 파일을 브라우저에서 바로 수정한 뒤 분석할 수 있습니다</div>
+    </div>
+  </div>
+
+  <div id="edit-status" style="display:none;padding:.6rem 1rem;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);font-size:.8rem;color:var(--ok);margin-bottom:.75rem"></div>
+
+  <div class="edit-grid">
+    <!-- 패널 A: 간호처방집계 -->
+    <div class="card edit-panel">
+      <div>
+        <div class="panel-title">① 간호처방집계</div>
+        <div class="panel-sub">메인 분석 파일</div>
+      </div>
+      <div class="action-row">
+        <input type="file" id="file-a" accept=".csv,.xlsx,.xls" style="font-size:.75rem;flex:1">
+        <button class="btn btn-ghost" style="font-size:.75rem" onclick="loadFile('a')">불러오기</button>
+      </div>
+      <div id="table-wrap-a">
+        <div class="empty-tip">파일을 선택하고 "불러오기"를 누르세요</div>
+      </div>
+      <div class="action-row" id="actions-a" style="display:none">
+        <button class="btn btn-ghost" style="font-size:.75rem" onclick="addRow('a')">+ 행 추가</button>
+        <button class="upload-btn" style="font-size:.75rem" onclick="runSolo()">📊 단독 분석</button>
+        <button class="upload-btn ok" style="font-size:.75rem" onclick="runCompare()">⇄ 비교 분석</button>
+      </div>
+    </div>
+
+    <!-- 패널 B: 불출증 -->
+    <div class="card edit-panel">
+      <div>
+        <div class="panel-title">② 불출증</div>
+        <div class="panel-sub">선택 · 비교용</div>
+      </div>
+      <div class="action-row">
+        <input type="file" id="file-b" accept=".csv,.xlsx,.xls" style="font-size:.75rem;flex:1">
+        <button class="btn btn-ghost" style="font-size:.75rem" onclick="loadFile('b')">불러오기</button>
+      </div>
+      <div id="table-wrap-b">
+        <div class="empty-tip">파일을 선택하고 "불러오기"를 누르세요</div>
+      </div>
+      <div class="action-row" id="actions-b" style="display:none">
+        <button class="btn btn-ghost" style="font-size:.75rem" onclick="addRow('b')">+ 행 추가</button>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+<script>
+document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
+  const h = document.documentElement;
+  const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  h.dataset.theme = next;
+  localStorage.setItem('eicu_theme', next);
+});
+
+const state = { a: { columns: [], rows: [] }, b: { columns: [], rows: [] } };
+
+async function loadFile(panel) {
+  const input = document.getElementById('file-' + panel);
+  if (!input.files.length) { alert('파일을 선택해주세요.'); return; }
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  setStatus('불러오는 중...', 'muted');
+  try {
+    const res = await fetch('/api/read-excel', { method: 'POST', body: form });
+    const d = await res.json();
+    if (d.error) { setStatus('오류: ' + d.error, 'err'); return; }
+    state[panel].columns = d.columns;
+    state[panel].rows = d.rows.map(r => ({ ...r }));
+    renderTable(panel);
+    setStatus(`패널 ${panel === 'a' ? 'A' : 'B'} 로드 완료 · ${d.rows.length}행`, 'ok');
+  } catch(e) {
+    setStatus('네트워크 오류: ' + e.message, 'err');
+  }
+}
+
+function renderTable(panel) {
+  const wrap = document.getElementById('table-wrap-' + panel);
+  const { columns, rows } = state[panel];
+  if (!columns.length) { wrap.innerHTML = '<div class="empty-tip">데이터 없음</div>'; return; }
+
+  let html = '<div class="edit-table-wrap"><table class="edit-table"><thead><tr>';
+  html += columns.map(c => `<th>${c}</th>`).join('');
+  html += '<th style="width:28px"></th></tr></thead><tbody>';
+  rows.forEach((row, ri) => {
+    html += '<tr>';
+    columns.forEach(col => {
+      const val = row[col] ?? '';
+      html += `<td><input value="${String(val).replace(/"/g,'&quot;')}" data-panel="${panel}" data-row="${ri}" data-col="${col}" oninput="updateCell(this)"></td>`;
+    });
+    html += `<td><button class="del-btn" onclick="deleteRow('${panel}',${ri})">✕</button></td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+  document.getElementById('actions-' + panel).style.display = 'flex';
+}
+
+function updateCell(input) {
+  const { panel, row, col } = input.dataset;
+  state[panel].rows[parseInt(row)][col] = input.value;
+}
+
+function deleteRow(panel, ri) {
+  state[panel].rows.splice(ri, 1);
+  renderTable(panel);
+}
+
+function addRow(panel) {
+  const empty = {};
+  state[panel].columns.forEach(c => { empty[c] = ''; });
+  state[panel].rows.push(empty);
+  renderTable(panel);
+  const wrap = document.getElementById('table-wrap-' + panel);
+  wrap.querySelector('.edit-table-wrap').scrollTop = 99999;
+}
+
+function rowsToCsvBlob(panel) {
+  const { columns, rows } = state[panel];
+  const lines = [columns.join(',')];
+  rows.forEach(r => {
+    lines.push(columns.map(c => {
+      const v = String(r[c] ?? '');
+      return v.includes(',') || v.includes('"') ? `"${v.replace(/"/g,'""')}"` : v;
+    }).join(','));
+  });
+  return new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+}
+
+async function runSolo() {
+  if (!state.a.rows.length) { alert('간호처방집계 파일을 먼저 불러와주세요.'); return; }
+  setStatus('단독 분석 중...', 'muted');
+  const form = new FormData();
+  form.append('file', rowsToCsvBlob('a'), 'ganhocheo.csv');
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: form });
+    const d = await res.json();
+    if (d.error) { setStatus('분석 오류: ' + d.error, 'err'); return; }
+    localStorage.setItem('edit_result', JSON.stringify(d));
+    setStatus('분석 완료! 대시보드에서 결과를 확인하세요.', 'ok');
+    setTimeout(() => { window.location.href = '/'; }, 1200);
+  } catch(e) { setStatus('오류: ' + e.message, 'err'); }
+}
+
+async function runCompare() {
+  if (!state.a.rows.length || !state.b.rows.length) {
+    alert('두 파일 모두 불러와야 비교 분석이 가능합니다.');
+    return;
+  }
+  setStatus('비교 분석 중...', 'muted');
+  const form = new FormData();
+  form.append('ganhocheo', rowsToCsvBlob('a'), 'ganhocheo.csv');
+  form.append('bulchul', rowsToCsvBlob('b'), 'bulchul.csv');
+  try {
+    const res = await fetch('/api/compare', { method: 'POST', body: form });
+    const d = await res.json();
+    if (d.error) { setStatus('비교 오류: ' + d.error, 'err'); return; }
+    localStorage.setItem('edit_result', JSON.stringify(d));
+    setStatus('비교 분석 완료! 대시보드에서 결과를 확인하세요.', 'ok');
+    setTimeout(() => { window.location.href = '/'; }, 1200);
+  } catch(e) { setStatus('오류: ' + e.message, 'err'); }
+}
+
+function setStatus(msg, type) {
+  const el = document.getElementById('edit-status');
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.style.background = type === 'err' ? 'var(--err-hl)' : type === 'ok' ? 'var(--ok-hl)' : 'var(--surf2)';
+  el.style.color = type === 'err' ? 'var(--err)' : type === 'ok' ? 'var(--ok)' : 'var(--muted)';
+  el.style.borderColor = type === 'err' ? 'rgba(239,68,68,.25)' : type === 'ok' ? 'rgba(16,185,129,.25)' : 'var(--bdr)';
+}
+</script>
+</body>
+</html>
