@@ -1,10 +1,12 @@
 import os
 import pandas as pd
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_file
+from io import BytesIO
 from modules.flow_calculator import calculate_oxygen_charge
 from modules.data_loader import get_monthly_data, get_weekly_data, get_checklist, get_incidents
 from modules.upload_parser import parse_upload, compare_files, read_df
 from modules.ocr_parser import extract_from_image, MIME_MAP
+from modules import scheduler as sch
 
 app = Flask(__name__)
 
@@ -137,6 +139,67 @@ def read_excel():
         return jsonify({"error": err}), 400
     df = df.fillna("")
     return jsonify({"columns": df.columns.tolist(), "rows": df.to_dict("records")})
+
+@app.route("/roster")
+def roster():
+    return render_template("roster.html")
+
+@app.route("/api/roster/nurses")
+def roster_nurses():
+    return jsonify(sch.load_nurses())
+
+@app.route("/api/roster/generate", methods=["POST"])
+def roster_generate():
+    data = request.get_json()
+    year         = int(data.get("year",  2025))
+    month        = int(data.get("month", 6))
+    prev_tail    = data.get("prev_tail", {})
+    fixed_leaves = data.get("fixed_leaves", {})
+    result = sch.generate_schedule(year, month, prev_tail, fixed_leaves)
+    return jsonify(result)
+
+@app.route("/api/roster/validate", methods=["POST"])
+def roster_validate():
+    data      = request.get_json()
+    year      = int(data.get("year",  2025))
+    month     = int(data.get("month", 6))
+    schedule  = data.get("schedule", {})
+    prev_tail = data.get("prev_tail", {})
+    nurses_data = sch.load_nurses()
+    violations = sch.validate_schedule(schedule, year, month, prev_tail, nurses_data)
+    return jsonify({"violations": violations})
+
+@app.route("/api/roster/save", methods=["POST"])
+def roster_save():
+    data  = request.get_json()
+    year  = int(data.get("year",  2025))
+    month = int(data.get("month", 6))
+    sch.save_schedule(year, month, data)
+    return jsonify({"ok": True})
+
+@app.route("/api/roster/load")
+def roster_load():
+    year  = int(request.args.get("year",  2025))
+    month = int(request.args.get("month", 6))
+    saved = sch.load_saved(year, month)
+    if saved is None:
+        return jsonify({"error": "저장된 근무표 없음"}), 404
+    return jsonify(saved)
+
+@app.route("/api/roster/export", methods=["POST"])
+def roster_export():
+    data     = request.get_json()
+    year     = int(data.get("year",  2025))
+    month    = int(data.get("month", 6))
+    schedule = data.get("schedule", {})
+    stats    = data.get("stats", {})
+    xlsx_bytes = sch.export_excel(schedule, stats, year, month)
+    return send_file(
+        BytesIO(xlsx_bytes),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=f"근무표_{year}{month:02d}.xlsx"
+    )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

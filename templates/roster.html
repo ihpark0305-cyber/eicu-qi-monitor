@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>간호사 근무표 — EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+/* ── 근무표 전용 스타일 ───────────────────────────────────────────── */
+.roster-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.roster-toolbar select{padding:.3rem .5rem;border:1px solid var(--bdr);border-radius:var(--r-sm);background:var(--surf);color:var(--txt);font-size:var(--xs)}
+.roster-toolbar .btn-pri{background:var(--pri);color:#fff;font-size:.78rem;padding:.3rem .8rem}
+.roster-toolbar .btn-pri:hover{background:var(--pri-h)}
+.roster-toolbar .btn-ok{background:var(--ok);color:#fff;font-size:.78rem;padding:.3rem .8rem}
+.roster-toolbar .btn-warn{background:var(--warn);color:#fff;font-size:.78rem;padding:.3rem .8rem}
+
+/* 그리드 컨테이너 */
+.grid-wrap{overflow-x:auto;border:1px solid var(--bdr);border-radius:var(--r-lg);background:var(--surf)}
+table.roster{border-collapse:collapse;font-size:.72rem;white-space:nowrap}
+table.roster th,table.roster td{border:1px solid var(--bdr);padding:2px 3px;text-align:center;min-width:28px}
+table.roster th{background:var(--surf2);font-weight:600;position:sticky;top:0;z-index:10}
+table.roster th.col-name{position:sticky;left:0;z-index:20;min-width:70px;text-align:left;padding-left:6px}
+table.roster th.col-grade{position:sticky;left:70px;z-index:20;min-width:36px}
+table.roster td.col-name{position:sticky;left:0;z-index:5;background:var(--surf);font-weight:500;text-align:left;padding-left:6px}
+table.roster td.col-grade{position:sticky;left:70px;z-index:5;background:var(--surf);font-size:.65rem;color:var(--muted)}
+table.roster td.col-stat{background:var(--surf2);font-weight:600;min-width:34px}
+table.roster select.cell-sel{border:none;background:transparent;width:100%;font-size:.7rem;text-align:center;cursor:pointer;padding:0;color:inherit}
+table.roster select.cell-sel:focus{outline:2px solid var(--pri);border-radius:2px}
+table.roster tr.sum-row td{background:var(--surfoff);font-weight:700}
+
+/* 셀 배경 */
+.c-D  {background:rgba(37,99,235,0.10)!important}
+.c-E  {background:rgba(124,58,237,0.10)!important}
+.c-N  {background:rgba(20,184,166,0.12)!important}
+.c-OF,.c-S{background:var(--surf2)!important}
+.c-HD {background:rgba(234,179,8,0.13)!important}
+.c-AL,.c-CD{background:rgba(5,150,105,0.10)!important}
+.c-GA,.c-TR,.c-M{background:rgba(234,88,12,0.10)!important}
+.c-O,.c-OO{background:rgba(219,39,119,0.10)!important}
+.viol-hard{outline:2px solid var(--err)!important;outline-offset:-2px}
+.viol-soft{outline:2px solid var(--warn)!important;outline-offset:-2px}
+.sun-col{background:rgba(239,68,68,0.04)!important}
+.sat-col{background:rgba(59,130,246,0.04)!important}
+.hd-col {background:rgba(234,179,8,0.06)!important}
+
+/* 위반 패널 */
+.viol-panel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:1rem}
+.viol-item{display:flex;align-items:center;gap:.5rem;padding:.3rem .5rem;border-radius:var(--r-sm);font-size:.75rem;cursor:pointer;transition:background var(--tr)}
+.viol-item:hover{background:var(--surf2)}
+.viol-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-hard{background:var(--err)}
+.dot-soft{background:var(--warn)}
+
+/* 이전 달 입력 패널 */
+.prev-panel{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:1rem}
+.prev-panel summary{font-size:.8rem;font-weight:600;cursor:pointer;color:var(--muted)}
+.prev-panel table{margin-top:.75rem;border-collapse:collapse;font-size:.7rem}
+.prev-panel th,.prev-panel td{border:1px solid var(--bdr);padding:2px 4px;text-align:center;min-width:28px}
+.prev-panel th.col-name{text-align:left;min-width:70px;padding-left:6px}
+.prev-panel select{border:none;background:transparent;font-size:.7rem;width:100%}
+
+/* 통계 헤더 강조 */
+.stat-pending{color:var(--err);font-weight:700}
+
+/* 로딩 오버레이 */
+.loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:1rem}
+.loading-overlay.hidden{display:none}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{color:#fff;font-size:.9rem;font-weight:500}
+</style>
+</head>
+<body>
+<div class="loading-overlay hidden" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-txt" id="loading-txt">근무표 생성 중... (최대 60초)</div>
+</div>
+
+<div class="app">
+<!-- ── 상단바 ─────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#3b82f6" fill-opacity="0.15"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>EICU QI Monitor</span>
+    </div>
+    <span class="badge">중앙대병원 EICU · 13병상</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="theme-btn" data-theme-toggle>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ── 사이드바 ───────────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="nav-sec">모니터링</div>
+  <a class="nav-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
+  <a class="nav-item" href="/analysis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>처치 유형별 분석</a>
+  <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
+  <div class="nav-sec">자동계산</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>연속처치 자동계산<span class="badge-pur" style="margin-left:auto;font-size:.6rem">NEW</span></div>
+  <div class="nav-sec">근무 관리</div>
+  <a class="nav-item active" href="/roster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>간호사 근무표</a>
+  <div class="nav-sec">발표용</div>
+  <a class="nav-item" href="/demo" style="border-left:2px solid var(--pur)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span style="color:var(--pur)">발표용 데모</span></a>
+  <div class="nav-sec">데이터 편집</div>
+  <a class="nav-item" href="/edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>엑셀 직접 수정</a>
+  <div class="nav-sec">관리</div>
+  <div class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg>체크리스트</div>
+  <a class="nav-item" href="/report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>월별 보고서</a>
+  <a class="nav-item" href="/effects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>기대 효과</a>
+  <a class="nav-item" href="/settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>설정</a>
+</nav>
+
+<!-- ── 메인 콘텐츠 ─────────────────────────────────────────────────── -->
+<main class="main">
+  <!-- 페이지 헤더 -->
+  <div class="pg-header">
+    <div>
+      <div class="pg-title">📅 간호사 근무표 자동 생성</div>
+      <div class="pg-sub">OR-Tools CP-SAT 기반 · 하드 제약 100% 보장 · 소프트 제약 최적화</div>
+    </div>
+  </div>
+
+  <!-- 툴바 -->
+  <div class="roster-toolbar" style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:.75rem 1rem">
+    <label style="font-size:.78rem;font-weight:500">연도</label>
+    <select id="sel-year"></select>
+    <label style="font-size:.78rem;font-weight:500">월</label>
+    <select id="sel-month"></select>
+    <button class="btn btn-pri" onclick="generateRoster()">⚡ 근무표 생성</button>
+    <button class="btn btn-ghost" style="font-size:.78rem" onclick="validateRoster()">✅ 검증</button>
+    <button class="btn btn-ghost" style="font-size:.78rem" onclick="saveRoster()">💾 저장</button>
+    <button class="btn btn-ghost" style="font-size:.78rem" onclick="loadRoster()">📂 불러오기</button>
+    <button class="btn btn-ok" onclick="exportExcel()">📥 엑셀 내보내기</button>
+    <span id="status-badge" style="font-size:.72rem;padding:2px 8px;border-radius:var(--r-sm);display:none"></span>
+  </div>
+
+  <!-- 위반 경고 배너 -->
+  <div id="viol-banner" style="display:none;background:var(--err-hl);border:1px solid rgba(220,38,38,.25);border-radius:var(--r-md);padding:.6rem 1rem;font-size:.78rem">
+    ⚠️ <span id="viol-summary"></span> — 저장 및 내보내기는 가능하나 수정을 권장합니다.
+  </div>
+
+  <!-- 이전 달 마지막 주 입력 -->
+  <details class="prev-panel" id="prev-details">
+    <summary>📌 이전 달 마지막 주 근무 입력 (클릭하여 펼치기)</summary>
+    <div style="margin-top:.5rem;font-size:.72rem;color:var(--muted)">이전 달 마지막 7일을 입력하면 월 경계의 연속근무/전환 제약이 정확하게 계산됩니다.</div>
+    <table id="prev-table" style="margin-top:.75rem"></table>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem">
+      <button class="btn btn-ghost" style="font-size:.72rem" onclick="savePrevTail()">💾 이전 달 기록 저장</button>
+      <button class="btn btn-ghost" style="font-size:.72rem" onclick="loadPrevTail()">📂 이전 달 기록 불러오기</button>
+    </div>
+  </details>
+
+  <!-- 고정 휴무 입력 -->
+  <details style="background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);padding:1rem">
+    <summary style="font-size:.8rem;font-weight:600;cursor:pointer;color:var(--muted)">📝 고정 휴무 / Request OFF 입력</summary>
+    <div style="margin-top:.75rem;display:flex;flex-direction:column;gap:.5rem" id="fixed-leaves-container">
+      <div style="font-size:.72rem;color:var(--muted)">형식: 간호사이름 탭 날짜(1~31) 탭 코드(AL/CD/GA/TR/OF/...)</div>
+      <textarea id="fixed-leaves-input" rows="6" style="width:100%;font-family:var(--fm);font-size:.72rem;padding:.5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:var(--txt);resize:vertical"
+        placeholder="예시:&#10;이정원	10	AL&#10;김세영	15	TR&#10;엄나영	5	OF"></textarea>
+      <div style="font-size:.7rem;color:var(--faint)">※ 탭으로 구분 (붙여넣기 가능). TR 입력 시 전날 자동으로 Day 배정.</div>
+    </div>
+  </details>
+
+  <!-- 근무표 그리드 -->
+  <div class="grid-wrap" id="grid-wrap">
+    <div style="padding:2rem;text-align:center;color:var(--muted);font-size:.85rem">
+      연도/월을 선택하고 <strong>근무표 생성</strong> 버튼을 누르세요.
+    </div>
+  </div>
+
+  <!-- 위반 패널 -->
+  <div class="viol-panel" id="viol-panel" style="display:none">
+    <div style="font-size:.82rem;font-weight:600;margin-bottom:.75rem">
+      ⚠️ 제약 위반 목록
+      <span id="viol-count-hard" style="color:var(--err);font-size:.72rem;margin-left:.5rem"></span>
+      <span id="viol-count-soft" style="color:var(--warn);font-size:.72rem;margin-left:.25rem"></span>
+    </div>
+    <div id="viol-list"></div>
+  </div>
+</main>
+</div>
+
+<script>
+// ── 전역 상태 ──────────────────────────────────────────────────────────────
+let G = {
+  nurses: [],
+  schedule: {},   // name -> [code_str, ...]
+  stats: {},
+  violations: [],
+  year: new Date().getFullYear(),
+  month: new Date().getMonth() + 1,
+  daysInMonth: 30,
+  prevTail: {},   // name -> [7 codes]
+};
+
+const SHIFT_CODES = ['D','E','N','OF','S','HD','AL','CD','GA','TR','O','OO','M'];
+
+// ── 초기화 ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // 연/월 셀렉터
+  const ySel = document.getElementById('sel-year');
+  const mSel = document.getElementById('sel-month');
+  for (let y = 2024; y <= 2027; y++) {
+    const o = document.createElement('option');
+    o.value = y; o.textContent = y + '년';
+    if (y === G.year) o.selected = true;
+    ySel.appendChild(o);
+  }
+  for (let m = 1; m <= 12; m++) {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m + '월';
+    if (m === G.month) o.selected = true;
+    mSel.appendChild(o);
+  }
+  ySel.onchange = () => { G.year = +ySel.value; rebuildPrevTable(); };
+  mSel.onchange = () => { G.month = +mSel.value; rebuildPrevTable(); };
+
+  // 간호사 목록 로드
+  const res = await fetch('/api/roster/nurses');
+  G.nurses = await res.json();
+
+  rebuildPrevTable();
+  initThemeToggle();
+});
+
+// ── 이전 달 테이블 ────────────────────────────────────────────────────────
+function rebuildPrevTable() {
+  const y = G.year, m = G.month;
+  // 이전 달 계산
+  const prevM = m === 1 ? 12 : m - 1;
+  const prevY = m === 1 ? y - 1 : y;
+  const prevDays = new Date(prevY, prevM, 0).getDate();
+  const day7 = Array.from({length:7}, (_,i) => prevDays - 6 + i);
+
+  const tbl = document.getElementById('prev-table');
+  const dayNames = ['일','월','화','수','목','금','토'];
+  let html = '<tr><th class="col-name">이름</th>';
+  day7.forEach(d => {
+    const dow = new Date(prevY, prevM-1, d).getDay();
+    html += `<th>${d}(${dayNames[dow]})</th>`;
+  });
+  html += '</tr>';
+
+  G.nurses.filter(n=>!n.is_training).forEach(n => {
+    html += `<tr><td class="col-name" style="font-size:.7rem">${n.name}</td>`;
+    day7.forEach((d,i) => {
+      const sel = SHIFT_CODES.map(c=>`<option value="${c}">${c}</option>`).join('');
+      html += `<td><select class="prev-sel" data-nurse="${n.name}" data-idx="${i}">${sel}</select></td>`;
+    });
+    html += '</tr>';
+  });
+  tbl.innerHTML = html;
+  loadPrevTailIntoTable();
+}
+
+function getPrevTailFromTable() {
+  const result = {};
+  document.querySelectorAll('.prev-sel').forEach(sel => {
+    const name = sel.dataset.nurse;
+    const idx  = +sel.dataset.idx;
+    if (!result[name]) result[name] = Array(7).fill('OF');
+    result[name][idx] = sel.value;
+  });
+  return result;
+}
+
+function savePrevTail() {
+  const data = getPrevTailFromTable();
+  const key = `roster_prev_${G.year}_${G.month}`;
+  localStorage.setItem(key, JSON.stringify(data));
+  showToast('이전 달 기록 저장 완료');
+}
+
+function loadPrevTail() {
+  loadPrevTailIntoTable();
+}
+
+function loadPrevTailIntoTable() {
+  const key = `roster_prev_${G.year}_${G.month}`;
+  const saved = localStorage.getItem(key);
+  if (!saved) return;
+  const data = JSON.parse(saved);
+  document.querySelectorAll('.prev-sel').forEach(sel => {
+    const name = sel.dataset.nurse;
+    const idx  = +sel.dataset.idx;
+    if (data[name] && data[name][idx]) sel.value = data[name][idx];
+  });
+}
+
+// ── 고정 휴무 파싱 ───────────────────────────────────────────────────────
+function parseFixedLeaves() {
+  const raw = document.getElementById('fixed-leaves-input').value;
+  const result = {};
+  raw.split('\n').forEach(line => {
+    const parts = line.split(/\t+|\s{2,}/).map(s=>s.trim()).filter(Boolean);
+    if (parts.length < 3) return;
+    const [name, day, code] = parts;
+    if (!result[name]) result[name] = {};
+    result[name][day] = code;
+  });
+  return result;
+}
+
+// ── 근무표 생성 ──────────────────────────────────────────────────────────
+async function generateRoster() {
+  G.prevTail = getPrevTailFromTable();
+  const fixedLeaves = parseFixedLeaves();
+
+  showLoading('근무표 생성 중... (최대 60초)');
+  try {
+    const res = await fetch('/api/roster/generate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        year: G.year, month: G.month,
+        prev_tail: G.prevTail,
+        fixed_leaves: fixedLeaves
+      })
+    });
+    const data = await res.json();
+    G.schedule   = data.schedule   || {};
+    G.stats      = data.stats      || {};
+    G.violations = data.violations || [];
+    G.daysInMonth = new Date(G.year, G.month, 0).getDate();
+
+    renderGrid();
+    renderViolations();
+    showStatusBadge(data.status);
+
+    // 다음 달 이전 달 기록으로 마지막 7일 저장
+    autoSaveLastWeek();
+  } catch(e) {
+    showToast('오류: ' + e.message, true);
+  } finally {
+    hideLoading();
+  }
+}
+
+function autoSaveLastWeek() {
+  if (!Object.keys(G.schedule).length) return;
+  const nextM = G.month === 12 ? 1 : G.month + 1;
+  const nextY = G.month === 12 ? G.year + 1 : G.year;
+  const tail = {};
+  G.nurses.filter(n=>!n.is_training).forEach(n => {
+    const row = G.schedule[n.name] || [];
+    tail[n.name] = row.slice(-7);
+  });
+  const key = `roster_prev_${nextY}_${nextM}`;
+  localStorage.setItem(key, JSON.stringify(tail));
+}
+
+// ── 그리드 렌더링 ─────────────────────────────────────────────────────────
+function renderGrid() {
+  const days = G.daysInMonth;
+  const dayNames = ['일','월','화','수','목','금','토'];
+  const firstDow = new Date(G.year, G.month-1, 1).getDay();
+
+  const violMap = {};  // "name_day" -> severity
+  G.violations.forEach(v => {
+    if (v.day > 0) {
+      const key = `${v.nurse}_${v.day}`;
+      if (!violMap[key] || v.severity === 'hard') violMap[key] = v.severity;
+    }
+  });
+
+  let html = '<table class="roster"><thead><tr>';
+  html += '<th class="col-name">이름</th><th class="col-grade">등급</th>';
+  for (let d = 1; d <= days; d++) {
+    const dow = (firstDow + d - 1) % 7;
+    const cls = dow===0?'sun-col':dow===6?'sat-col':'';
+    html += `<th class="${cls}" title="${d}일 ${dayNames[dow]}">${d}<br><span style="font-size:.6rem;font-weight:400">${dayNames[dow]}</span></th>`;
+  }
+  const statHdrs = ['D','E','N','Night%','O미배정','OO미배정'];
+  statHdrs.forEach(s => html += `<th class="col-stat" style="font-size:.65rem">${s}</th>`);
+  html += '</tr></thead><tbody>';
+
+  const nurseOrder = G.nurses;
+  nurseOrder.forEach(n => {
+    const row = G.schedule[n.name];
+    if (!row) return;
+    const st = G.stats[n.name] || {};
+    const isG1 = n.grade === 'G1';
+    html += `<tr><td class="col-name" style="${isG1?'font-weight:700':''}">${n.name}</td>`;
+    html += `<td class="col-grade">${n.grade}</td>`;
+    for (let d = 0; d < days; d++) {
+      const code = row[d] || 'OF';
+      const dow = (firstDow + d) % 7;
+      const colCls = dow===0?'sun-col':dow===6?'sat-col':'';
+      const violKey = `${n.name}_${d+1}`;
+      const violCls = violMap[violKey]==='hard'?'viol-hard':violMap[violKey]==='soft'?'viol-soft':'';
+      const opts = SHIFT_CODES.map(c=>`<option value="${c}"${c===code?' selected':''}>${c}</option>`).join('');
+      html += `<td class="c-${code} ${colCls} ${violCls}" data-nurse="${n.name}" data-day="${d}">`;
+      html += `<select class="cell-sel" onchange="onCellChange(this,'${n.name}',${d})">${opts}</select></td>`;
+    }
+    // 통계
+    html += `<td class="col-stat">${st.D||0}</td>`;
+    html += `<td class="col-stat">${st.E||0}</td>`;
+    html += `<td class="col-stat" style="${(st.N||0)>7?'color:var(--err)':''}">${st.N||0}</td>`;
+    html += `<td class="col-stat">${st.night_pct||0}%</td>`;
+    const op = st.N_pending_O||0, oop = st.N_pending_OO||0;
+    html += `<td class="col-stat ${op?'stat-pending':''}">${op||'-'}</td>`;
+    html += `<td class="col-stat ${oop?'stat-pending':''}">${oop||'-'}</td>`;
+    html += '</tr>';
+  });
+
+  // 합계 행 (D/E/N)
+  ['D','E','N'].forEach(code => {
+    html += `<tr class="sum-row"><td class="col-name">${code} 합계</td><td class="col-grade"></td>`;
+    for (let d = 0; d < days; d++) {
+      const cnt = nurseOrder.filter(n => G.schedule[n.name] && G.schedule[n.name][d] === code).length;
+      const warn = (code !== 'D' && cnt < 4) || cnt > 5;
+      html += `<td style="${warn?'color:var(--err);font-weight:700':''}">${cnt}</td>`;
+    }
+    const totalHdrs = 6;
+    for (let i = 0; i < totalHdrs; i++) html += '<td></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('grid-wrap').innerHTML = html;
+}
+
+function onCellChange(sel, name, dayIdx) {
+  const code = sel.value;
+  G.schedule[name][dayIdx] = code;
+  // 셀 배경 갱신
+  const td = sel.parentElement;
+  SHIFT_CODES.forEach(c => td.classList.remove(`c-${c}`));
+  td.classList.add(`c-${code}`);
+  // 디바운스 검증
+  clearTimeout(window._validateTimer);
+  window._validateTimer = setTimeout(validateRoster, 800);
+}
+
+// ── 검증 ─────────────────────────────────────────────────────────────────
+async function validateRoster() {
+  if (!Object.keys(G.schedule).length) return;
+  try {
+    const res = await fetch('/api/roster/validate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        year: G.year, month: G.month,
+        schedule: G.schedule,
+        prev_tail: G.prevTail
+      })
+    });
+    const data = await res.json();
+    G.violations = data.violations || [];
+    renderViolations();
+    refreshViolHighlights();
+  } catch(e) {}
+}
+
+function renderViolations() {
+  const panel = document.getElementById('viol-panel');
+  const list  = document.getElementById('viol-list');
+  const banner= document.getElementById('viol-banner');
+  const sumEl = document.getElementById('viol-summary');
+
+  const hard = G.violations.filter(v=>v.severity==='hard');
+  const soft = G.violations.filter(v=>v.severity==='soft');
+
+  document.getElementById('viol-count-hard').textContent = hard.length ? `하드 ${hard.length}건` : '';
+  document.getElementById('viol-count-soft').textContent = soft.length ? `소프트 ${soft.length}건` : '';
+
+  if (!G.violations.length) {
+    panel.style.display = 'none';
+    banner.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = '';
+  if (hard.length) {
+    banner.style.display = '';
+    sumEl.textContent = `하드 위반 ${hard.length}건, 소프트 위반 ${soft.length}건`;
+  } else {
+    banner.style.display = '';
+    document.getElementById('viol-banner').style.background = 'var(--warn-hl)';
+    document.getElementById('viol-banner').style.borderColor = 'rgba(245,158,11,.25)';
+    sumEl.textContent = `소프트 위반 ${soft.length}건`;
+  }
+
+  list.innerHTML = G.violations.slice(0,50).map(v => `
+    <div class="viol-item" onclick="highlightCell('${v.nurse}',${v.day})">
+      <div class="viol-dot ${v.severity==='hard'?'dot-hard':'dot-soft'}"></div>
+      <span style="color:var(--muted);min-width:60px;font-size:.7rem">${v.nurse}</span>
+      <span style="min-width:40px;font-size:.7rem">${v.day > 0 ? v.day+'일' : ''}</span>
+      <span>${v.description}</span>
+    </div>
+  `).join('');
+}
+
+function refreshViolHighlights() {
+  // 기존 위반 클래스 제거
+  document.querySelectorAll('.viol-hard,.viol-soft').forEach(td => {
+    td.classList.remove('viol-hard','viol-soft');
+  });
+  G.violations.forEach(v => {
+    if (v.day <= 0) return;
+    const td = document.querySelector(`td[data-nurse="${v.nurse}"][data-day="${v.day-1}"]`);
+    if (td) {
+      td.classList.remove('viol-hard','viol-soft');
+      td.classList.add(v.severity==='hard'?'viol-hard':'viol-soft');
+    }
+  });
+}
+
+function highlightCell(nurse, day) {
+  if (day <= 0) return;
+  const td = document.querySelector(`td[data-nurse="${nurse}"][data-day="${day-1}"]`);
+  if (!td) return;
+  td.scrollIntoView({behavior:'smooth', block:'center', inline:'center'});
+  td.style.transition = 'box-shadow 0.3s';
+  td.style.boxShadow = '0 0 0 3px var(--pri)';
+  setTimeout(() => td.style.boxShadow = '', 1500);
+}
+
+// ── 저장 / 불러오기 ───────────────────────────────────────────────────────
+async function saveRoster() {
+  if (!Object.keys(G.schedule).length) { showToast('생성된 근무표가 없습니다', true); return; }
+  await fetch('/api/roster/save', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({year:G.year, month:G.month, schedule:G.schedule, stats:G.stats, violations:G.violations})
+  });
+  showToast('저장 완료');
+}
+
+async function loadRoster() {
+  const res = await fetch(`/api/roster/load?year=${G.year}&month=${G.month}`);
+  if (!res.ok) { showToast('저장된 근무표가 없습니다', true); return; }
+  const data = await res.json();
+  G.schedule   = data.schedule   || {};
+  G.stats      = data.stats      || {};
+  G.violations = data.violations || [];
+  G.daysInMonth = new Date(G.year, G.month, 0).getDate();
+  renderGrid();
+  renderViolations();
+  showToast('불러오기 완료');
+}
+
+// ── 엑셀 내보내기 ────────────────────────────────────────────────────────
+async function exportExcel() {
+  if (!Object.keys(G.schedule).length) { showToast('생성된 근무표가 없습니다', true); return; }
+  const res = await fetch('/api/roster/export', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({year:G.year, month:G.month, schedule:G.schedule, stats:G.stats})
+  });
+  if (!res.ok) { showToast('내보내기 실패', true); return; }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `근무표_${G.year}${String(G.month).padStart(2,'0')}.xlsx`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── 상태 뱃지 ─────────────────────────────────────────────────────────────
+function showStatusBadge(status) {
+  const el = document.getElementById('status-badge');
+  el.style.display = '';
+  if (status === 'OPTIMAL') {
+    el.textContent = '✓ 최적해';
+    el.style.background = 'var(--ok-hl)';
+    el.style.color = 'var(--ok)';
+  } else if (status === 'FEASIBLE') {
+    el.textContent = '~ 실행 가능해';
+    el.style.background = 'var(--warn-hl)';
+    el.style.color = 'var(--warn)';
+  } else {
+    el.textContent = '✗ 해 없음';
+    el.style.background = 'var(--err-hl)';
+    el.style.color = 'var(--err)';
+  }
+}
+
+// ── 유틸 ──────────────────────────────────────────────────────────────────
+function showLoading(txt) {
+  document.getElementById('loading-txt').textContent = txt;
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+function showToast(msg, isErr=false) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position:'fixed', bottom:'1.5rem', right:'1.5rem', zIndex:9999,
+    background: isErr ? 'var(--err)' : 'var(--ok)', color:'#fff',
+    padding:'.5rem 1rem', borderRadius:'var(--r-md)', fontSize:'.8rem',
+    boxShadow:'0 4px 12px rgba(0,0,0,0.2)', transition:'opacity .3s',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 2500);
+}
+function initThemeToggle() {
+  document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
+    btn.onclick = () => {
+      const cur = document.documentElement.getAttribute('data-theme');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('eicu_theme', next);
+    };
+  });
+}
+</script>
+</body>
+</html>

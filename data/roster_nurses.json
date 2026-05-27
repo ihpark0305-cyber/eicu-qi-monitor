@@ -1,0 +1,29 @@
+{
+  "nurses": [
+    {"name": "이정원",  "grade": "G1", "no_night": true,  "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "김민경",  "grade": "G1", "no_night": false, "night_only": false, "pair": "이주현", "is_training": false, "charge_day_only": false},
+    {"name": "최정란",  "grade": "G1", "no_night": false, "night_only": false, "pair": "문지수", "is_training": false, "charge_day_only": false},
+    {"name": "김나현",  "grade": "G1", "no_night": false, "night_only": true,  "pair": null, "is_training": false, "charge_day_only": false, "night_compensation": true},
+    {"name": "김나영",  "grade": "G1", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "김예은",  "grade": "G1", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "권민조",  "grade": "G1", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "정이용",  "grade": "G2", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "엄나영",  "grade": "G2", "no_night": false, "night_only": false, "pair": "장미소", "is_training": false, "charge_day_only": true},
+    {"name": "조인혜",  "grade": "G2", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "이세진",  "grade": "G2", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "이가은",  "grade": "G2", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "임지은",  "grade": "G2", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "이현영",  "grade": "G3", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "성은서",  "grade": "G3", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "권보연",  "grade": "G3", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "류재석",  "grade": "G3", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "김민서",  "grade": "G3", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "김명빈",  "grade": "G4", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "강경민",  "grade": "G4", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "김세영",  "grade": "G4", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false, "day_before_tr": true},
+    {"name": "신수연",  "grade": "G4", "no_night": false, "night_only": false, "pair": null, "is_training": false, "charge_day_only": false},
+    {"name": "문지수",  "grade": "TR", "no_night": false, "night_only": false, "pair": "최정란", "is_training": true, "charge_day_only": false},
+    {"name": "장미소",  "grade": "TR", "no_night": false, "night_only": false, "pair": "엄나영",  "is_training": true, "charge_day_only": false},
+    {"name": "이주현",  "grade": "TR", "no_night": false, "night_only": false, "pair": "김민경", "is_training": true, "charge_day_only": false}
+  ]
+}
