@@ -15,7 +15,7 @@
 <header class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
     <div class="logo">
-      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#3b82f6" fill-opacity="0.15"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#3b82f6" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#fff" fill-opacity="0.2"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#fff" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
       <span>EICU QI Monitor</span>
     </div>
     <span class="badge">중앙대병원 EICU · 13병상</span>
@@ -30,6 +30,7 @@
     </button>
   </div>
 </header>
+
 <nav class="sidebar">
   <div class="nav-sec">모니터링</div>
   <a class="nav-item active" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>EMR 반영 현황</a>
@@ -47,16 +48,25 @@
     <span id="nav-incident-badge" style="display:none;position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:var(--err);color:#fff;font-size:.6rem;font-weight:700;border-radius:99px;padding:1px 5px;min-width:16px;text-align:center"></span>
   </a>
 </nav>
+
 <main class="main">
-  <!-- ── HERO BANNER ──────────────────────────────────── -->
+
+  <!-- ═══════════════════════════════════════════════════════
+       HERO BANNER — date + calendar
+       ═══════════════════════════════════════════════════════ -->
   <div class="hero-banner">
     <div class="hero-content">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="hero-eyebrow">
           <span class="hero-live-dot"></span>실시간 모니터링 · 중앙대병원 EICU
         </div>
-        <h1 class="hero-title">EMR-전산 반영 현황 대시보드</h1>
-        <p class="hero-sub">수가 입력 → 전산 반영 → 청구 흐름 · AI OCR · 자동 수가 계산 통합 모니터링 시스템</p>
+        <h1 class="hero-title">EMR-전산 반영 현황</h1>
+        <!-- Today date chip -->
+        <div class="hero-date-chip" id="today-date-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="today-date-header">날짜 로딩중…</span>
+        </div>
+        <p class="hero-sub">수가 입력 → 전산 반영 → 청구 흐름 · AI OCR · 자동 수가 계산 통합 모니터링</p>
         <div class="hero-feature-tags">
           <span class="hero-ftag">🤖 AI OCR 추출</span>
           <span class="hero-ftag">📦 Two-Bin 재고</span>
@@ -65,6 +75,16 @@
           <span class="hero-ftag">📋 교대 체크리스트</span>
         </div>
       </div>
+      <!-- Mini calendar -->
+      <div class="mini-cal-wrap" id="mini-calendar-widget">
+        <div class="cal-month-lbl" id="cal-month-label">2026년 5월</div>
+        <div class="cal-day-names">
+          <span>일</span><span>월</span><span>화</span><span>수</span>
+          <span>목</span><span>금</span><span>토</span>
+        </div>
+        <div class="cal-grid-body" id="cal-grid-body"></div>
+      </div>
+      <!-- Hero quick stats -->
       <div class="hero-stats">
         <div class="hero-stat">
           <div class="hero-stat-val" id="hero-uploads-val">0</div>
@@ -83,9 +103,35 @@
       </div>
     </div>
   </div>
-  <!-- Hero 통계 동기화 -->
+
+  <!-- Calendar builder + date + hero sync -->
   <script>
   (function(){
+    /* ── Date display ── */
+    var now = new Date();
+    var days = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+    var dateStr = days[now.getDay()] + ', ' + now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일';
+    var el = document.getElementById('today-date-header');
+    if(el) el.textContent = dateStr;
+
+    /* ── Mini calendar ── */
+    var monthEl = document.getElementById('cal-month-label');
+    var gridEl  = document.getElementById('cal-grid-body');
+    if(monthEl) monthEl.textContent = now.getFullYear() + '년 ' + (now.getMonth()+1) + '월';
+    if(gridEl){
+      var y = now.getFullYear(), m = now.getMonth();
+      var firstDay = new Date(y,m,1).getDay();
+      var daysInMonth = new Date(y,m+1,0).getDate();
+      var html = '';
+      for(var i=0;i<firstDay;i++) html += '<div class="cal-cell cal-other"></div>';
+      for(var d=1;d<=daysInMonth;d++){
+        var cls = (d===now.getDate()) ? 'cal-cell cal-today' : 'cal-cell';
+        html += '<div class="' + cls + '">' + d + '</div>';
+      }
+      gridEl.innerHTML = html;
+    }
+
+    /* ── Hero stats sync ── */
     function syncHero(){
       var u=document.getElementById('sum-uploads');
       var r=document.getElementById('v1');
@@ -104,8 +150,17 @@
     });
     syncHero();
   })();
+
+  /* ── Section toggle ── */
+  function toggleSection(btn){
+    var body = btn.closest('.dash-section').querySelector('.section-body');
+    var isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? '' : 'none';
+    btn.textContent = isHidden ? '접기 ▲' : '펼치기 ▼';
+  }
   </script>
-  <!-- ── 인수인계 포스트잇 배너 ──────────────────────────── -->
+
+  <!-- Handover banner -->
   <div id="handover-banner" style="display:none;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.35);border-radius:var(--r-md);padding:.75rem 1rem">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
       <div>
@@ -115,649 +170,732 @@
       <button onclick="clearHandover()" style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0">✓ 확인 완료</button>
     </div>
   </div>
-  <!-- ── 사용 방법 안내 카드 ─────────────────────────────── -->
-  <div class="card" id="manual-card" style="border-left:3px solid var(--pri);margin-bottom:.75rem">
-    <div class="card-hd" style="cursor:pointer" onclick="toggleManual()">
-      <div>
-        <div class="card-title">📖 사용 방법 안내</div>
-        <div class="card-sub">처음 사용하시는 분은 이 안내를 먼저 읽어주세요 (클릭하여 접기/펼치기)</div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ① 오늘 현황
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">📊</span>
+        <span class="section-title">오늘 현황</span>
+        <span class="section-sub">KPI · 주요 지표 실시간 모니터링</span>
       </div>
-      <span id="manual-toggle-icon" style="font-size:.85rem;color:var(--muted)">▼ 펼치기</span>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">접기 ▲</button>
     </div>
-    <div id="manual-body" style="display:none;margin-top:.75rem">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem">
+    <div class="section-body">
 
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">① 파일 업로드</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            <b>간호처방집계</b> 엑셀 파일 또는 화면 캡처 사진을 "파일 선택" 버튼으로 업로드합니다.<br>
-            • 여러 파일을 한 번에 선택할 수 있습니다<br>
-            • 사진(JPG/PNG)은 <b>AI OCR</b>이 자동으로 수가 항목을 추출합니다<br>
-            • 엑셀(.xlsx, .csv)은 직접 파싱합니다
-          </div>
-        </div>
-
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">② 추출 결과 확인 및 수정</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            업로드 후 아래 표에서 추출된 수가 항목을 확인합니다.<br>
-            • 오류가 있으면 왼쪽 메뉴 <b>"엑셀 직접 수정"</b>에서 셀 단위로 수정 가능<br>
-            • 수정 후 "단독 분석" 또는 "비교 분석"을 다시 실행하세요
-          </div>
-        </div>
-
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">③ 불일치 분석</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            <b>불출증</b> 파일을 비교 업로드하면 처방집계 vs 불출증 차이를 자동 분석합니다.<br>
-            • 상단 <b>Top 5 불일치 항목</b>에서 누락/과다 항목 확인<br>
-            • 처치 유형별 분석은 왼쪽 메뉴 <b>"처치 유형별 분석"</b>에서 확인
-          </div>
-        </div>
-
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--ok);margin-bottom:.4rem">④ 산소 수가 계산기</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            산소 투여 <b>시작 시간</b>과 <b>종료 시간</b>, <b>Flow(L/min)</b>를 입력 후 [▶ 계산] 클릭.<br>
-            • 시간대별로 자동 분할되어 구간별 수가 + 합계가 계산됩니다<br>
-            • FiO₂(%) 모드로 전환하면 산소 농도에서 Flow를 자동 환산합니다<br>
-            • [📋 합계 복사] 버튼으로 EMR 메모장에 붙여넣기 가능
-          </div>
-        </div>
-
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--warn);margin-bottom:.4rem">⑤ Two-Bin 재고 관리</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            물품별 Bin A / Bin B 재고 수량을 등록하면 현황을 한눈에 파악합니다.<br>
-            • <b>긴급</b>(빨강): Bin A 소진 → 즉시 보충 필요<br>
-            • <b>주의</b>(노랑): Bin A 50% 이하 → 보충 준비<br>
-            • MAX 설정은 상단 [⚙️ MAX 설정] 버튼에서 조정
-          </div>
-        </div>
-
-        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
-          <div style="font-size:.8rem;font-weight:700;color:var(--pur);margin-bottom:.4rem">⑥ 인수인계 & 보고서</div>
-          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
-            <b>인수인계 메모</b> 섹션에 다음 근무자에게 전달할 내용을 입력합니다.<br>
-            • 저장하면 화면 상단 포스트잇 배너에 표시됩니다<br>
-            • 월별 통계 보고서는 왼쪽 메뉴 <b>"월별 보고서"</b>에서 확인<br>
-            • 교대별 입력률은 <b>"교대별 입력률"</b> 메뉴에서 확인
-          </div>
-        </div>
-
-      </div>
-      <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(59,130,246,.06);border-radius:var(--r-sm);font-size:.75rem;color:var(--muted)">
-        💡 <b>팁:</b> 데이터는 이 브라우저의 로컬 저장소에 저장됩니다. 다른 기기나 브라우저에서는 공유되지 않습니다.
-        연속처치 타이머(산소·인공호흡기·CRRT 등)는 [자동계산] 메뉴의 타이머 기능을 활용하세요.
-      </div>
-    </div>
-  </div>
-
-  <div class="pg-header">
-    <div>
-      <div class="pg-title">EMR-전산 반영 현황 대시보드</div>
-      <div class="pg-sub">EMR 입력 → 전산 반영 → 청구 흐름 확인 모니터링</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.5rem">
-      <button class="btn btn-ghost" style="font-size:.77rem;padding:.3rem .7rem;border:1px solid var(--pur,#8b5cf6);color:var(--pur,#8b5cf6)" onclick="toggleHeadNurseView()">👩‍⚕️ 수간호사 모드</button>
-      <div class="ptabs">
-        <div class="ptab" data-period="monthly">월간</div>
-        <div class="ptab active" data-period="weekly">주간 (반영 지연 감지)</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 수간호사 전용 대시보드 ─────────────────────────── -->
-  <div id="head-nurse-view" style="display:none">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.75rem">
-      <!-- 오늘 체크리스트 완료율 -->
-      <div class="card" style="border-top:3px solid var(--ok)">
-        <div class="card-title" style="margin-bottom:.5rem">✅ 체크리스트 완료율 (오늘)</div>
-        <div id="hn-checklist-rate" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ok)">—</div>
-        <div id="hn-checklist-detail" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
-      </div>
-      <!-- 오늘 타이머 정산 건수 -->
-      <div class="card" style="border-top:3px solid var(--pri)">
-        <div class="card-title" style="margin-bottom:.5rem">⏱️ 오늘 처치 정산 건수</div>
-        <div id="hn-timer-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--pri)">—</div>
-        <div id="hn-timer-total" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
-      </div>
-      <!-- 인시던트 미처리 -->
-      <div class="card" style="border-top:3px solid var(--warn)">
-        <div class="card-title" style="margin-bottom:.5rem">⚠️ 미처리 인시던트</div>
-        <div id="hn-incident-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--warn)">—</div>
-        <div id="hn-incident-items" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
-      </div>
-    </div>
-
-    <!-- 불일치 항목 + 피드백 -->
-    <div class="card">
-      <div class="card-hd">
+      <!-- 수간호사 모드 + 기간 탭 -->
+      <div class="pg-header">
         <div>
-          <div class="card-title">📋 수가 불일치 현황 · 피드백</div>
-          <div class="card-sub">오늘 업로드된 비교분석 결과 + 수간호사 메모</div>
+          <div class="pg-title">EMR-전산 반영 현황 대시보드</div>
+          <div class="pg-sub">EMR 입력 → 전산 반영 → 청구 흐름 확인 모니터링</div>
         </div>
-        <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="printHandoverCards()">🖨️ 인수인계 양식 출력</button>
-      </div>
-      <div id="hn-mismatch-list" style="margin-bottom:.75rem">
-        <div style="font-size:.8rem;color:var(--muted);padding:.5rem">비교 분석 결과가 없습니다. 메인화면에서 불출증 파일을 업로드해주세요.</div>
-      </div>
-      <div style="border-top:1px solid var(--bdr);padding-top:.75rem">
-        <div style="font-size:.8rem;font-weight:600;margin-bottom:.4rem">📝 수간호사 메모 / 피드백</div>
-        <textarea id="hn-feedback-input" rows="3" placeholder="불일치 사항에 대한 메모나 피드백을 입력하세요..." style="width:100%;box-sizing:border-box;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:.5rem;font-size:.82rem;background:var(--surf2);color:var(--txt);resize:vertical"></textarea>
-        <div style="display:flex;gap:.5rem;margin-top:.4rem">
-          <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="saveHeadNurseFeedback()">저장</button>
-          <div id="hn-feedback-saved" style="font-size:.75rem;color:var(--ok);align-self:center;display:none">✓ 저장됨</div>
-        </div>
-        <div id="hn-prev-feedback" style="margin-top:.75rem"></div>
-      </div>
-    </div>
-  </div>
-  <!-- ── Daily Summary 카드 ──────────────────────────────── -->
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem">
-    <div class="kpi" style="cursor:pointer;padding:.875rem;position:relative" onclick="document.getElementById('upload-zone-id').scrollIntoView({behavior:'smooth'})">
-      <div class="kpi-lbl">총 업로드</div><div class="kpi-val" id="sum-uploads" style="font-size:1.4rem">0</div>
-      <button onclick="event.stopPropagation();resetTodayKpi()" style="position:absolute;top:.4rem;right:.4rem;font-size:.6rem;padding:1px 5px;background:none;border:1px solid var(--bdr);border-radius:var(--r-sm);color:var(--muted);cursor:pointer;line-height:1.5" title="오늘 집계 초기화">🔄</button>
-    </div>
-    <div class="kpi" style="padding:.875rem">
-      <div class="kpi-lbl">추출 완료</div><div class="kpi-val" id="sum-extracted" style="font-size:1.4rem">0</div>
-    </div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(245,158,11,.3)">
-      <div class="kpi-lbl">확인 필요</div><div class="kpi-val c-warn" id="sum-needs-review" style="font-size:1.4rem">0</div>
-    </div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(239,68,68,.3)">
-      <div class="kpi-lbl">과다 적재 경고</div><div class="kpi-val c-bad" id="sum-overstock" style="font-size:1.4rem">0</div>
-    </div>
-    <div class="kpi" style="padding:.875rem;border-color:rgba(167,139,250,.3)">
-      <div class="kpi-lbl">이브닝 정산 필요</div><div class="kpi-val" style="color:var(--pur);font-size:1.4rem" id="sum-evening">0</div>
-    </div>
-  </div>
-
-  <!-- ── 업로드 존 (탭 구조) ──────────────────────────────── -->
-  <div class="card" id="upload-zone-id" style="padding:1rem 1.25rem">
-    <div style="display:flex;gap:2px;margin-bottom:.75rem">
-      <button class="upload-tab ctab active" data-tab="csv"   onclick="switchUploadTab('csv')">📄 CSV / XLSX</button>
-      <button class="upload-tab ctab"        data-tab="image" onclick="switchUploadTab('image')">🖼 이미지 / 캡처</button>
-    </div>
-    <!-- CSV 패널 -->
-    <div id="upload-csv-panel" class="upload-zone" style="margin:0;border:none;padding:0;background:none">
-      <div style="flex:1;min-width:180px">
-        <div class="upload-label">① 간호처방집계 <span class="upload-sub">메인 분석 파일</span></div>
-        <input type="file" id="upload-ganhocheo" accept=".csv,.xlsx,.xls" style="font-size:.75rem;margin-top:.25rem" />
-      </div>
-      <div style="flex:1;min-width:180px">
-        <div class="upload-label">② 불출증 <span class="upload-sub">선택 · 비교용</span></div>
-        <input type="file" id="upload-bulchul" accept=".csv,.xlsx,.xls" style="font-size:.75rem;margin-top:.25rem" />
-      </div>
-      <div style="display:flex;flex-direction:column;gap:.4rem;align-self:flex-end">
-        <button class="upload-btn" onclick="handleUpload()">▶ 처방집계 단독 분석</button>
-        <button class="upload-btn ok" onclick="handleCompare()">⇄ 불출 vs 처방 비교</button>
-      </div>
-    </div>
-    <!-- 이미지 패널 -->
-    <div id="upload-image-panel" style="display:none">
-      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem">
-        <div>
-          <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">날짜</label>
-          <input type="date" id="meta-date" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
-        </div>
-        <div>
-          <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">문서 종류</label>
-          <select id="meta-doctype" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem">
-            <option value="bulchul">불출증</option>
-            <option value="ganhocheo">간호처방집계</option>
-            <option value="other">기타</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">듀티</label>
-          <select id="meta-duty" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem">
-            <option value="day">Day</option>
-            <option value="evening">Evening</option>
-            <option value="night">Night</option>
-          </select>
-        </div>
-        <div style="flex:1;min-width:160px">
-          <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">메모 (선택)</label>
-          <input type="text" id="meta-memo" placeholder="예: 오늘 HFNC 2명 사용" style="width:100%;padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
-        </div>
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
-          <div class="upload-label">캡처 화면 / 스캔 이미지 <span class="upload-sub">JPG · PNG · WEBP · 여러 장 선택 가능</span></div>
-          <input type="file" id="upload-image" accept=".jpg,.jpeg,.png,.gif,.webp" multiple style="font-size:.75rem;margin-top:.25rem" />
-        </div>
-        <button class="upload-btn" onclick="handleImageUpload()">🔍 자동 추출</button>
-      </div>
-      <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem;line-height:1.6">
-        AI가 이미지에서 품목·수량을 읽고 아래 표로 정리합니다. 노란 셀은 불확실 항목이니 확인 후 "분석 확정"을 눌러주세요.
-      </p>
-    </div>
-    <span id="upload-status" style="display:block;margin-top:.5rem;font-size:.75rem;color:var(--muted)"></span>
-  </div>
-  <!-- ── 업로드 내역 조회/삭제 ─────────────────────────────── -->
-  <div class="card" id="upload-history-card">
-    <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
-      <div><div class="card-title">📂 업로드 내역</div><div class="card-sub" id="history-sub">localStorage에 저장된 업로드 기록</div></div>
-      <div style="display:flex;gap:.5rem">
-        <button class="btn btn-ghost" style="font-size:.75rem" onclick="renderUploadHistory()">🔄 새로고침</button>
-        <button class="btn btn-ghost" style="font-size:.75rem;color:var(--err);border-color:var(--err)" onclick="clearAllUploadsFromDashboard()">🗑 전체 삭제</button>
-      </div>
-    </div>
-    <div id="upload-history-list" style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto"></div>
-    <div id="upload-history-empty" style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.83rem">업로드 내역이 없습니다</div>
-  </div>
-
-  <!-- 업로드 내역 상세 조회 모달 -->
-  <div id="historyViewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:4000;align-items:center;justify-content:center">
-    <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(680px,95vw);max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <div>
-          <div id="hv-title" style="font-weight:700;font-size:.95rem"></div>
-          <div id="hv-meta" style="font-size:.75rem;color:var(--muted);margin-top:.2rem"></div>
-        </div>
-        <button onclick="document.getElementById('historyViewModal').style.display='none'" style="font-size:1.1rem;color:var(--muted);background:none;border:none;cursor:pointer">✕</button>
-      </div>
-      <div style="overflow-x:auto">
-        <table id="hv-table" style="width:100%;font-size:.8rem">
-          <thead><tr>
-            <th>품목명</th><th>단위</th><th>청구수량</th><th>출고량</th><th>미출고량</th><th>실수량</th><th>비고</th>
-          </tr></thead>
-          <tbody id="hv-tbody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end">
-        <button class="btn btn-ghost" style="font-size:.8rem;color:var(--pur);border-color:var(--pur)" id="hv-reedit-btn" onclick="">✏️ 다시 편집</button>
-        <button class="btn btn-ghost" style="font-size:.8rem" onclick="document.getElementById('historyViewModal').style.display='none'">닫기</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- OCR 결과 편집 테이블 -->
-  <div id="ocr-result-section" style="display:none" class="card">
-    <div class="card-hd">
-      <div>
-        <div class="card-title">📋 추출 결과 — 수정 후 확정</div>
-        <div class="card-sub" id="ocr-count-label"></div>
-      </div>
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <span id="ocr-edit-count" style="font-size:.7rem;color:var(--warn)"></span>
-        <button class="btn btn-ghost" style="font-size:.75rem" onclick="addOcrRow()">+ 행 추가</button>
-      </div>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="ocr-table">
-        <thead><tr>
-          <th>품목명</th><th>단위</th><th>청구수량</th>
-          <th>출고량</th><th>미출고량</th><th>실수량</th><th>비고</th><th></th>
-        </tr></thead>
-        <tbody id="ocr-tbody"></tbody>
-      </table>
-    </div>
-    <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center">
-      <button class="upload-btn" onclick="confirmOcrData()">✓ 분석 확정</button>
-      <span id="ocr-status" style="font-size:.75rem;color:var(--muted)"></span>
-    </div>
-  </div>
-
-  <!-- 결과 요약 배지 -->
-  <div id="result-badges" style="display:none;margin-bottom:.75rem;gap:.5rem;flex-wrap:wrap">
-    <span id="badge-missing" class="result-badge badge-r" style="display:none"></span>
-    <span id="badge-diff"    class="result-badge badge-y" style="display:none"></span>
-    <span id="badge-continuous" class="result-badge badge-o" style="display:none"></span>
-  </div>
-  <!-- EMR → 전산 반영 → 청구 흐름도 -->
-  <div class="card" style="padding:1.25rem 1.5rem">
-    <div class="card-hd" style="margin-bottom:.875rem">
-      <div><div class="card-title">문제 구조 · EMR 입력–전산 반영–청구 흐름</div><div class="card-sub">입력이 완료되어도 각 단계의 반영 여부를 별도 확인해야 함</div></div>
-    </div>
-    <div style="display:flex;align-items:stretch;gap:0">
-      <!-- 단계 1 -->
-      <div style="flex:1;background:var(--pri-hl);border:1px solid rgba(59,130,246,.25);border-radius:var(--r-md);padding:.875rem 1rem">
-        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pri);margin-bottom:.5rem">① EMR 입력</div>
-        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">간호사 처방·처치 기록</div>
-        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">산소 flow 변경<br>소모품 사용 기록<br>인공호흡기 시간 입력</div>
-        <div style="margin-top:.625rem;font-size:.65rem;color:var(--pri);background:rgba(59,130,246,.1);border-radius:4px;padding:3px 7px;display:inline-block">EMR에 기록됨</div>
-      </div>
-      <!-- 화살표 -->
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">자동 반영?</span>
-      </div>
-      <!-- 단계 2 -->
-      <div style="flex:1;background:var(--warn-hl);border:1px solid rgba(245,158,11,.25);border-radius:var(--r-md);padding:.875rem 1rem">
-        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);margin-bottom:.5rem">② 전산 반영</div>
-        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">청구 시스템 수량 확정</div>
-        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">연속형 항목 일괄 정산<br>재고 수량 대조<br>이브닝 cost 처리</div>
-        <div style="margin-top:.625rem;font-size:.65rem;color:var(--warn);background:rgba(245,158,11,.1);border-radius:4px;padding:3px 7px;display:inline-block">⚠ 수동 확인 필요</div>
-      </div>
-      <!-- 화살표 -->
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">일치 여부?</span>
-      </div>
-      <!-- 단계 3 -->
-      <div style="flex:1;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);padding:.875rem 1rem">
-        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ok);margin-bottom:.5rem">③ 청구 완료</div>
-        <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">실제 수가 청구 확정</div>
-        <div style="font-size:.7rem;color:var(--muted);line-height:1.6">보험 청구 수량 확정<br>입력값 = 청구값 일치<br>교대별 정산 완료</div>
-        <div style="margin-top:.625rem;font-size:.65rem;color:var(--ok);background:rgba(16,185,129,.1);border-radius:4px;padding:3px 7px;display:inline-block">✓ 청구 반영</div>
-      </div>
-      <!-- 문제 박스 -->
-      <div style="display:flex;align-items:center;padding:0 .75rem">
-        <div style="width:1px;height:60%;background:var(--bdr)"></div>
-      </div>
-      <div style="flex:1.1;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);padding:.875rem 1rem;border-left:3px solid var(--err)">
-        <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--err);margin-bottom:.5rem">⚡ 현재 문제</div>
-        <div style="font-size:.7rem;color:var(--muted);line-height:1.7">
-          · ①→② 자동 반영 보장 없음<br>
-          · 연속형 항목은 교대 중 입력해도<br>&nbsp;&nbsp;이브닝 cost 별도 정산 필요<br>
-          · ②→③ 불일치 즉시 확인 불가<br>
-          · 재고 수량 ≠ 청구 수량 가능성
-        </div>
-      </div>
-    </div>
-    <!-- 개선안 연결 행 -->
-    <div style="margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--div);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-      <span style="font-size:.65rem;color:var(--faint);flex-shrink:0">QI 개선안 대응 →</span>
-      <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pri-hl);color:var(--pri);border:1px solid rgba(59,130,246,.2)">개선안 ① 처치 유형별 입력 기준표</span>
-      <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pri-hl);color:var(--pri);border:1px solid rgba(59,130,246,.2)">개선안 ② 교대 종료 체크리스트</span>
-      <span style="font-size:.65rem;color:var(--faint)">·</span>
-      <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--ok-hl);color:var(--ok);border:1px solid rgba(16,185,129,.2)">개선안 ③ 교육 이수 시스템</span>
-      <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--ok-hl);color:var(--ok);border:1px solid rgba(16,185,129,.2)">개선안 ④ 월별 모니터링</span>
-      <span style="font-size:.65rem;color:var(--faint)">·</span>
-      <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pur-hl);color:var(--pur);border:1px solid rgba(167,139,250,.2)">개선안 ⑤ 자동계산 시스템 (장기)</span>
-    </div>
-  </div>
-
-  <div class="alert" id="alert-box">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--warn);flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span id="alert-text" class="alert-txt"></span>
-  </div>
-  <div class="kpi-grid">
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">EMR→전산 반영 일치율</span><div class="kpi-ico ico-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div></div><div class="kpi-val c-warn" id="v1">—</div><div class="kpi-dl"><span id="v1-d" class="d-up"></span><span id="v1-p" class="d-n"></span></div><div class="kpi-tgt">반영 정확도 목표: 95% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 파일 업로드 시 실측값으로 갱신</div><div id="v1-note" style="font-size:.6rem;color:var(--muted);margin-top:.2rem;font-style:italic"></div></div>
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">연속형 항목 이브닝 처리율</span><div class="kpi-ico ico-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div><div class="kpi-val c-bad" id="v2">—</div><div class="kpi-dl"><span id="v2-d" class="d-dn"></span><span id="v2-p" class="d-n"></span></div><div class="kpi-tgt">이브닝 cost 처리 목표: 90% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 시스템 도입 시 실측 가능</div></div>
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">체크리스트 수행률</span><div class="kpi-ico ico-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg></div></div><div class="kpi-val c-ok" id="v3">—</div><div class="kpi-dl"><span id="v3-d" class="d-up"></span><span id="v3-p" class="d-n"></span></div><div class="kpi-tgt">반영 확인 체크리스트 목표: 90% 이상</div></div>
-    <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">반영 지연 추정액</span><div class="kpi-ico ico-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="kpi-val" style="font-size:1.3rem" id="v4">—</div><div class="kpi-dl"><span id="v4-d" class="d-up"></span><span id="v4-p" class="d-n"></span></div><div class="kpi-tgt" id="v4-tgt"></div></div>
-  </div>
-  <div class="charts-row">
-    <div class="card">
-      <div class="card-hd">
-        <div><div class="card-title">EMR-전산 반영 추이</div><div class="card-sub" id="chart-sub"></div></div>
-        <span style="font-size:.7rem;color:var(--faint);background:var(--surfoff);padding:2px 8px;border-radius:4px">— 반영 정확도 목표</span>
-      </div>
-      <div class="chart-tabs">
-        <div class="ctab active" data-chart="monthly">월별 (공식 지표)</div>
-        <div class="ctab" data-chart="weekly">주별 (반영 지연 감지)</div>
-      </div>
-      <div style="position:relative;height:210px"><canvas id="trendChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-hd"><div><div class="card-title">처치 유형별 현황</div><div class="card-sub">이번 달 기준 · 개선안 ① 입력 기준 포함</div></div></div>
-      <div class="chart-tabs" style="margin-bottom:.75rem">
-        <div class="ctab active" id="tab-delay" onclick="switchTypeTab('delay')">반영 지연율</div>
-        <div class="ctab" id="tab-criteria" onclick="switchTypeTab('criteria')">입력 기준표 <span class="badge-pur" style="font-size:.55rem;margin-left:2px">개선안①</span></div>
-      </div>
-      <!-- 반영 지연율 -->
-      <div id="panel-delay" class="prog-list">
-        <div style="color:var(--muted);font-size:.8rem;padding:1rem;text-align:center">파일 업로드 후 처치 유형별 지연 현황이 표시됩니다.</div>
-      </div>
-      <!-- 처치 유형별 입력 기준표 (개선안 ①) -->
-      <div id="panel-criteria" style="display:none;overflow-x:auto">
-        <table style="font-size:.7rem">
-          <thead><tr><th>처치 유형</th><th>입력 시점</th><th>담당</th></tr></thead>
-          <tbody>
-            <tr><td>일회성 소모품<br><span style="color:var(--faint);font-size:.65rem">드레싱, Foley 교체 등</span></td><td style="color:var(--ok)">처치 직후 즉시</td><td>담당 간호사</td></tr>
-            <tr><td>연속형 항목<br><span style="color:var(--faint);font-size:.65rem">산소, HFNC, 인공호흡기, CRRT</span></td><td style="color:var(--warn)">교대 종료 30분 전<br><span style="color:var(--faint);font-size:.65rem">(총 시간·수량 일괄 정산)</span></td><td>담당 간호사</td></tr>
-            <tr><td>지속 정주 약물</td><td style="color:var(--warn)">교대 종료 후<br><span style="color:var(--faint);font-size:.65rem">실사용량 확인</span></td><td>담당 간호사</td></tr>
-            <tr><td>수혈 완료·중단</td><td style="color:var(--ok)">완료/중단 즉시</td><td>담당 간호사</td></tr>
-          </tbody>
-        </table>
-        <div style="margin-top:.625rem;font-size:.65rem;color:var(--faint);line-height:1.6">※ 개선안 ① · 교육 자료 및 간호 스테이션 라미네이팅 포스터로 배포</div>
-      </div>
-    </div>
-  </div>
-  <div class="autocalc">
-    <div style="height:3px;background:linear-gradient(90deg,#a78bfa,#14b8a6);border-radius:99px 99px 0 0;margin:-1.25rem -1.25rem 1rem;position:relative;top:-.05rem"></div>
-    <div class="card-hd">
-      <div class="card-title" style="display:flex;align-items:center;gap:.5rem">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-        연속 사용 처치 자동계산 엔진
-        <span class="badge-pur" style="font-size:.65rem">개선안 ⑤ · 장기 시스템 건의</span>
-      </div>
-      <button class="btn btn-ghost" id="calc-btn" onclick="runCalc()">▶ 이브닝 정산 계산</button>
-    </div>
-    <div style="margin-bottom:.75rem;font-size:.75rem;color:var(--muted);line-height:1.7">
-      산소처럼 연속적으로 사용되는 항목은 사용 시간 기준으로 입력되지만, 최종 청구는 이브닝 cost로 일괄 처리됩니다.
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-      <div>
-        <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">산소 Flow 변경 기록 <span style="font-size:.65rem;color:var(--faint)">(직접 입력)</span></div>
-        <div id="flow-records" class="flow-table"></div>
-        <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
-          <input id="flow-in-time" type="time" style="flex:1;min-width:90px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
-          <input id="flow-in-val" type="number" step="0.1" min="0" max="15" placeholder="L/min" style="width:72px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
-          <button class="upload-btn" style="padding:.3rem .65rem;font-size:.72rem" onclick="addFlowRecord()">추가</button>
-          <button onclick="clearFlowRecords()" style="padding:.3rem .5rem;font-size:.7rem;color:var(--muted);background:none;border:1px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer">초기화</button>
-        </div>
-      </div>
-      <div id="calc-result" style="display:none">
-        <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">이브닝 정산 계산 결과</div>
-        <div class="calc-result-box">
-          <div class="calc-formula" id="calc-formula"></div>
-          <div class="calc-total">
-            <div style="font-size:.65rem;color:var(--faint)">이브닝 cost 대상</div>
-            <div style="font-size:1.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#a78bfa" id="calc-total-val">—</div>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <button class="btn btn-ghost" style="font-size:.77rem;padding:.3rem .7rem;border:1px solid var(--pur,#8b5cf6);color:var(--pur,#8b5cf6)" onclick="toggleHeadNurseView()">👩‍⚕️ 수간호사 모드</button>
+          <div class="ptabs">
+            <div class="ptab" data-period="monthly">월간</div>
+            <div class="ptab active" data-period="weekly">주간 (반영 지연 감지)</div>
           </div>
-          <div class="calc-note">✓ 사용 시간 기준 자동 집계 &nbsp;·&nbsp; ✓ 이브닝 cost 정산 확인 후 청구 완료</div>
         </div>
       </div>
-      <div id="calc-placeholder" style="display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:.75rem;border:1px dashed var(--bdr);border-radius:8px;padding:1rem">
-        ▶ 이브닝 정산 계산을 실행하세요
-      </div>
-    </div>
-  </div>
-  <div class="bot-row">
-    <div class="card">
-      <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
-        <div><div class="card-title">반영 지연 / 불일치 사례</div><div class="card-sub">지연·불일치 원인 분류</div></div>
-        <button class="btn btn-ghost" style="font-size:.78rem;padding:.25rem .6rem;border:1px solid var(--warn,#f59e0b);color:var(--warn,#f59e0b)" onclick="toggleIncidentForm()">+ 직접 입력</button>
-      </div>
-      <!-- 수동 입력 폼 (토글) -->
-      <div id="incident-form-area" style="display:none;background:var(--surf2);border-radius:var(--r-sm);padding:.75rem;margin-bottom:.75rem">
-        <div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr auto;gap:.5rem;align-items:end">
-          <input id="inc-item" class="form-input" placeholder="항목명" style="font-size:.82rem">
-          <select id="inc-cause" class="form-input" style="font-size:.82rem">
-            <option value="입력누락">입력누락</option>
-            <option value="FiO₂미변경">FiO₂미변경</option>
-            <option value="Cost미처리">Cost미처리</option>
-            <option value="출고불일치">출고불일치</option>
-            <option value="기타">기타</option>
-          </select>
-          <select id="inc-shift" class="form-input" style="font-size:.82rem">
-            <option value="D">D (데이)</option>
-            <option value="E">E (이브닝)</option>
-            <option value="N">N (나이트)</option>
-          </select>
-          <select id="inc-priority" class="form-input" style="font-size:.82rem">
-            <option value="높음">높음</option>
-            <option value="중간">중간</option>
-            <option value="낮음">낮음</option>
-          </select>
-          <button class="upload-btn" style="font-size:.82rem;padding:.35rem .7rem;white-space:nowrap" onclick="saveManualIncident()">저장</button>
+
+      <!-- 수간호사 전용 뷰 (hidden by default) -->
+      <div id="head-nurse-view" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.75rem">
+          <div class="card" style="border-top:3px solid var(--ok)">
+            <div class="card-title" style="margin-bottom:.5rem">✅ 체크리스트 완료율 (오늘)</div>
+            <div id="hn-checklist-rate" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ok)">—</div>
+            <div id="hn-checklist-detail" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+          </div>
+          <div class="card" style="border-top:3px solid var(--pri)">
+            <div class="card-title" style="margin-bottom:.5rem">⏱️ 오늘 처치 정산 건수</div>
+            <div id="hn-timer-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--pri)">—</div>
+            <div id="hn-timer-total" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+          </div>
+          <div class="card" style="border-top:3px solid var(--warn)">
+            <div class="card-title" style="margin-bottom:.5rem">⚠️ 미처리 인시던트</div>
+            <div id="hn-incident-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--warn)">—</div>
+            <div id="hn-incident-items" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">📋 수가 불일치 현황 · 피드백</div>
+              <div class="card-sub">오늘 업로드된 비교분석 결과 + 수간호사 메모</div>
+            </div>
+            <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="printHandoverCards()">🖨️ 인수인계 양식 출력</button>
+          </div>
+          <div id="hn-mismatch-list" style="margin-bottom:.75rem">
+            <div style="font-size:.8rem;color:var(--muted);padding:.5rem">비교 분석 결과가 없습니다.</div>
+          </div>
+          <div style="border-top:1px solid var(--bdr);padding-top:.75rem">
+            <div style="font-size:.8rem;font-weight:600;margin-bottom:.4rem">📝 수간호사 메모 / 피드백</div>
+            <textarea id="hn-feedback-input" rows="3" placeholder="불일치 사항에 대한 메모나 피드백을 입력하세요..." style="width:100%;box-sizing:border-box;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:.5rem;font-size:.82rem;background:var(--surf2);color:var(--txt);resize:vertical"></textarea>
+            <div style="display:flex;gap:.5rem;margin-top:.4rem">
+              <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="saveHeadNurseFeedback()">저장</button>
+              <div id="hn-feedback-saved" style="font-size:.75rem;color:var(--ok);align-self:center;display:none">✓ 저장됨</div>
+            </div>
+            <div id="hn-prev-feedback" style="margin-top:.75rem"></div>
+          </div>
         </div>
       </div>
-      <div style="overflow-x:auto">
-        <table id="incidents-table">
-          <thead><tr><th>항목</th><th>지연·불일치 원인</th><th>교대</th><th>우선순위</th><th>상태</th><th>날짜</th></tr></thead>
-          <tbody id="incidents-body"></tbody>
-        </table>
+
+      <!-- Daily KPI strip (5 cards) -->
+      <div class="kpi-strip-row">
+        <div class="kpi" style="cursor:pointer;padding:.875rem;position:relative" onclick="document.getElementById('upload-zone-id').scrollIntoView({behavior:'smooth'})">
+          <div class="kpi-lbl">총 업로드</div><div class="kpi-val" id="sum-uploads" style="font-size:1.4rem">0</div>
+          <button onclick="event.stopPropagation();resetTodayKpi()" style="position:absolute;top:.4rem;right:.4rem;font-size:.6rem;padding:1px 5px;background:none;border:1px solid var(--bdr);border-radius:var(--r-sm);color:var(--muted);cursor:pointer;line-height:1.5" title="오늘 집계 초기화">🔄</button>
+        </div>
+        <div class="kpi" style="padding:.875rem">
+          <div class="kpi-lbl">추출 완료</div><div class="kpi-val" id="sum-extracted" style="font-size:1.4rem">0</div>
+        </div>
+        <div class="kpi" style="padding:.875rem;border-color:rgba(245,158,11,.3)">
+          <div class="kpi-lbl">확인 필요</div><div class="kpi-val c-warn" id="sum-needs-review" style="font-size:1.4rem">0</div>
+        </div>
+        <div class="kpi" style="padding:.875rem;border-color:rgba(239,68,68,.3)">
+          <div class="kpi-lbl">과다 적재 경고</div><div class="kpi-val c-bad" id="sum-overstock" style="font-size:1.4rem">0</div>
+        </div>
+        <div class="kpi" style="padding:.875rem;border-color:rgba(167,139,250,.3)">
+          <div class="kpi-lbl">이브닝 정산 필요</div><div class="kpi-val" style="color:var(--pur);font-size:1.4rem" id="sum-evening">0</div>
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-hd"><div><div class="card-title">오늘 교대 체크리스트</div><div class="card-sub" id="chk-meta"></div></div><span id="chk-count" style="font-size:.75rem;color:var(--muted);font-family:'JetBrains Mono',monospace"></span></div>
-      <div class="chklist" id="chk-list"></div>
-    </div>
-  </div>
-  <!-- ── 주간 누락 다빈도 품목 Top 5 ────────────────────── -->
-  <div class="card">
-    <div class="card-hd">
-      <div>
-        <div class="card-title">📊 주간 누락 다빈도 품목 Top 5</div>
-        <div class="card-sub">최근 7일 · 미출고 또는 실수량 &lt; 청구수량 기준 · 확정된 데이터 기반</div>
+
+      <!-- Alert box -->
+      <div class="alert" id="alert-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--warn);flex-shrink:0"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span id="alert-text" class="alert-txt"></span>
       </div>
-    </div>
-    <div id="top5-list" class="prog-list">
-      <div style="color:var(--muted);font-size:.8rem;padding:.75rem;text-align:center">파일 확정 후 통계가 집계됩니다.</div>
-    </div>
+
+      <!-- 4 KPI metrics -->
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">EMR→전산 반영 일치율</span><div class="kpi-ico ico-y"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div></div><div class="kpi-val c-warn" id="v1">—</div><div class="kpi-dl"><span id="v1-d" class="d-up"></span><span id="v1-p" class="d-n"></span></div><div class="kpi-tgt">반영 정확도 목표: 95% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 파일 업로드 시 실측값으로 갱신</div><div id="v1-note" style="font-size:.6rem;color:var(--muted);margin-top:.2rem;font-style:italic"></div></div>
+        <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">연속형 항목 이브닝 처리율</span><div class="kpi-ico ico-r"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div><div class="kpi-val c-bad" id="v2">—</div><div class="kpi-dl"><span id="v2-d" class="d-dn"></span><span id="v2-p" class="d-n"></span></div><div class="kpi-tgt">이브닝 cost 처리 목표: 90% 이상</div><div style="margin-top:.25rem;font-size:.6rem;color:var(--faint);font-style:italic">예시값 · 시스템 도입 시 실측 가능</div></div>
+        <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">체크리스트 수행률</span><div class="kpi-ico ico-g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/></svg></div></div><div class="kpi-val c-ok" id="v3">—</div><div class="kpi-dl"><span id="v3-d" class="d-up"></span><span id="v3-p" class="d-n"></span></div><div class="kpi-tgt">반영 확인 체크리스트 목표: 90% 이상</div></div>
+        <div class="kpi"><div class="kpi-hd"><span class="kpi-lbl">반영 지연 추정액</span><div class="kpi-ico ico-b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="kpi-val" style="font-size:1.3rem" id="v4">—</div><div class="kpi-dl"><span id="v4-d" class="d-up"></span><span id="v4-p" class="d-n"></span></div><div class="kpi-tgt" id="v4-tgt"></div></div>
+      </div>
+
+    </div><!-- /section-body -->
   </div>
 
-  <!-- ── Phase 4: Two-Bin 재고 현황판 ────────────────────── -->
-  <div id="twobin-alert" style="display:none;align-items:center;gap:.75rem;padding:.65rem 1rem;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);font-size:.82rem;font-weight:600;color:var(--err)"></div>
-  <div class="card" id="twobin-section">
-    <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
-      <div><div class="card-title">📦 Two-Bin 비처방성 물품 재고 현황</div><div class="card-sub">Bin A(주간 사용분) / Bin B(비상 재고) 상태 관리</div></div>
-      <button class="upload-btn" style="font-size:.78rem;padding:.3rem .7rem" onclick="openAddTwoBinModal()">+ 품목 추가</button>
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ② 데이터 업로드
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">📂</span>
+        <span class="section-title">데이터 업로드</span>
+        <span class="section-sub">CSV / XLSX · 이미지 OCR 자동 추출</span>
+      </div>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">접기 ▲</button>
     </div>
-    <div id="twobin-table-wrap" style="overflow-x:auto">
-      <table style="width:100%;font-size:.82rem">
-        <thead><tr>
-          <th>품목명</th><th>단위</th>
-          <th>Bin A<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">주간소요</span></th>
-          <th>Bin B<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">비상재고</span></th>
-          <th>상태</th><th>보충 요청</th><th>조작</th>
-        </tr></thead>
-        <tbody id="twobin-body"></tbody>
-      </table>
-    </div>
-    <div id="twobin-empty" style="text-align:center;color:var(--muted);font-size:.82rem;padding:1.5rem">
-      + 품목 추가 버튼으로 비처방성 물품을 등록하세요
-    </div>
-  </div>
+    <div class="section-body">
 
-  <!-- Two-Bin 추가 모달 -->
-  <div id="twoBinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
-    <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(380px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
-      <div style="font-weight:700;margin-bottom:1rem">📦 품목 추가</div>
-      <div style="display:flex;flex-direction:column;gap:.5rem">
-        <input id="tb-name" class="form-input" placeholder="품목명 (예: 거즈 10x10)">
-        <input id="tb-unit" class="form-input" placeholder="단위 (예: 봉, 개, 박스)">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+      <!-- 사용 방법 안내 -->
+      <div id="manual-card" style="border:1.5px solid var(--bdr);border-left:3px solid var(--pri);border-radius:var(--r-lg);padding:1rem 1.25rem">
+        <div style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleManual()">
           <div>
-            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin A MAX</div>
-            <input id="tb-maxA" class="form-input" type="number" min="0" placeholder="최대 수량">
+            <div style="font-size:.85rem;font-weight:700">📖 사용 방법 안내</div>
+            <div style="font-size:.73rem;color:var(--muted);margin-top:2px">처음 사용하시는 분은 이 안내를 먼저 읽어주세요 (클릭하여 접기/펼치기)</div>
+          </div>
+          <span id="manual-toggle-icon" style="font-size:.85rem;color:var(--muted)">▼ 펼치기</span>
+        </div>
+        <div id="manual-body" style="display:none;margin-top:.75rem">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem">
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">① 파일 업로드</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                <b>간호처방집계</b> 엑셀 파일 또는 화면 캡처 사진을 "파일 선택" 버튼으로 업로드합니다.<br>
+                • 여러 파일을 한 번에 선택할 수 있습니다<br>
+                • 사진(JPG/PNG)은 <b>AI OCR</b>이 자동으로 수가 항목을 추출합니다<br>
+                • 엑셀(.xlsx, .csv)은 직접 파싱합니다
+              </div>
+            </div>
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">② 추출 결과 확인 및 수정</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                업로드 후 아래 표에서 추출된 수가 항목을 확인합니다.<br>
+                • 오류가 있으면 왼쪽 메뉴 <b>"엑셀 직접 수정"</b>에서 셀 단위로 수정 가능<br>
+                • 수정 후 "단독 분석" 또는 "비교 분석"을 다시 실행하세요
+              </div>
+            </div>
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">③ 불일치 분석</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                <b>불출증</b> 파일을 비교 업로드하면 처방집계 vs 불출증 차이를 자동 분석합니다.<br>
+                • 상단 <b>Top 5 불일치 항목</b>에서 누락/과다 항목 확인<br>
+                • 처치 유형별 분석은 왼쪽 메뉴 <b>"처치 유형별 분석"</b>에서 확인
+              </div>
+            </div>
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--ok);margin-bottom:.4rem">④ 산소 수가 계산기</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                산소 투여 <b>시작 시간</b>과 <b>종료 시간</b>, <b>Flow(L/min)</b>를 입력 후 [▶ 계산] 클릭.<br>
+                • 시간대별로 자동 분할되어 구간별 수가 + 합계가 계산됩니다
+              </div>
+            </div>
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--warn);margin-bottom:.4rem">⑤ Two-Bin 재고 관리</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                물품별 Bin A / Bin B 재고 수량을 등록하면 현황을 한눈에 파악합니다.<br>
+                • <b>긴급</b>(빨강): Bin A 소진 → 즉시 보충 필요
+              </div>
+            </div>
+            <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+              <div style="font-size:.8rem;font-weight:700;color:var(--pur);margin-bottom:.4rem">⑥ 인수인계 & 보고서</div>
+              <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+                <b>인수인계 메모</b> 섹션에 다음 근무자에게 전달할 내용을 입력합니다.<br>
+                • 저장하면 화면 상단 포스트잇 배너에 표시됩니다
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(59,130,246,.06);border-radius:var(--r-sm);font-size:.75rem;color:var(--muted)">
+            💡 <b>팁:</b> 데이터는 이 브라우저의 로컬 저장소에 저장됩니다. 다른 기기나 브라우저에서는 공유되지 않습니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- 업로드 존 (탭 구조) -->
+      <div class="card" id="upload-zone-id" style="padding:1rem 1.25rem">
+        <div style="display:flex;gap:2px;margin-bottom:.75rem">
+          <button class="upload-tab ctab active" data-tab="csv"   onclick="switchUploadTab('csv')">📄 CSV / XLSX</button>
+          <button class="upload-tab ctab"        data-tab="image" onclick="switchUploadTab('image')">🖼 이미지 / 캡처</button>
+        </div>
+        <!-- CSV 패널 -->
+        <div id="upload-csv-panel" class="upload-zone" style="margin:0;border:none;padding:0;background:none">
+          <div style="flex:1;min-width:180px">
+            <div class="upload-label">① 간호처방집계 <span class="upload-sub">메인 분석 파일</span></div>
+            <input type="file" id="upload-ganhocheo" accept=".csv,.xlsx,.xls" style="font-size:.75rem;margin-top:.25rem" />
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div class="upload-label">② 불출증 <span class="upload-sub">선택 · 비교용</span></div>
+            <input type="file" id="upload-bulchul" accept=".csv,.xlsx,.xls" style="font-size:.75rem;margin-top:.25rem" />
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.4rem;align-self:flex-end">
+            <button class="upload-btn" onclick="handleUpload()">▶ 처방집계 단독 분석</button>
+            <button class="upload-btn ok" onclick="handleCompare()">⇄ 불출 vs 처방 비교</button>
+          </div>
+        </div>
+        <!-- 이미지 패널 -->
+        <div id="upload-image-panel" style="display:none">
+          <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem">
+            <div>
+              <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">날짜</label>
+              <input type="date" id="meta-date" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
+            </div>
+            <div>
+              <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">문서 종류</label>
+              <select id="meta-doctype" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem">
+                <option value="bulchul">불출증</option>
+                <option value="ganhocheo">간호처방집계</option>
+                <option value="other">기타</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">듀티</label>
+              <select id="meta-duty" style="padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem">
+                <option value="day">Day</option>
+                <option value="evening">Evening</option>
+                <option value="night">Night</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:160px">
+              <label style="font-size:.7rem;color:var(--muted);display:block;margin-bottom:.2rem">메모 (선택)</label>
+              <input type="text" id="meta-memo" placeholder="예: 오늘 HFNC 2명 사용" style="width:100%;padding:.3rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:.75rem;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div class="upload-label">캡처 화면 / 스캔 이미지 <span class="upload-sub">JPG · PNG · WEBP · 여러 장 선택 가능</span></div>
+              <input type="file" id="upload-image" accept=".jpg,.jpeg,.png,.gif,.webp" multiple style="font-size:.75rem;margin-top:.25rem" />
+            </div>
+            <button class="upload-btn" onclick="handleImageUpload()">🔍 자동 추출</button>
+          </div>
+          <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem;line-height:1.6">
+            AI가 이미지에서 품목·수량을 읽고 아래 표로 정리합니다. 노란 셀은 불확실 항목이니 확인 후 "분석 확정"을 눌러주세요.
+          </p>
+        </div>
+        <span id="upload-status" style="display:block;margin-top:.5rem;font-size:.75rem;color:var(--muted)"></span>
+      </div>
+
+      <!-- 업로드 내역 -->
+      <div class="card" id="upload-history-card">
+        <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="card-title">📂 업로드 내역</div><div class="card-sub" id="history-sub">localStorage에 저장된 업로드 기록</div></div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-ghost" style="font-size:.75rem" onclick="renderUploadHistory()">🔄 새로고침</button>
+            <button class="btn btn-ghost" style="font-size:.75rem;color:var(--err);border-color:var(--err)" onclick="clearAllUploadsFromDashboard()">🗑 전체 삭제</button>
+          </div>
+        </div>
+        <div id="upload-history-list" style="display:flex;flex-direction:column;gap:.4rem;max-height:320px;overflow-y:auto"></div>
+        <div id="upload-history-empty" style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.83rem">업로드 내역이 없습니다</div>
+      </div>
+
+      <!-- OCR 결과 편집 테이블 -->
+      <div id="ocr-result-section" style="display:none" class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">📋 추출 결과 — 수정 후 확정</div>
+            <div class="card-sub" id="ocr-count-label"></div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <span id="ocr-edit-count" style="font-size:.7rem;color:var(--warn)"></span>
+            <button class="btn btn-ghost" style="font-size:.75rem" onclick="addOcrRow()">+ 행 추가</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="ocr-table">
+            <thead><tr>
+              <th>품목명</th><th>단위</th><th>청구수량</th>
+              <th>출고량</th><th>미출고량</th><th>실수량</th><th>비고</th><th></th>
+            </tr></thead>
+            <tbody id="ocr-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center">
+          <button class="upload-btn" onclick="confirmOcrData()">✓ 분석 확정</button>
+          <span id="ocr-status" style="font-size:.75rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- 결과 요약 배지 -->
+      <div id="result-badges" style="display:none;gap:.5rem;flex-wrap:wrap">
+        <span id="badge-missing" class="result-badge badge-r" style="display:none"></span>
+        <span id="badge-diff"    class="result-badge badge-y" style="display:none"></span>
+        <span id="badge-continuous" class="result-badge badge-o" style="display:none"></span>
+      </div>
+
+    </div><!-- /section-body -->
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ③ EMR 반영 분석
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">🔄</span>
+        <span class="section-title">EMR 반영 현황 분석</span>
+        <span class="section-sub">입력→전산→청구 흐름도 · 추이 차트 · 다빈도 누락 항목</span>
+      </div>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">접기 ▲</button>
+    </div>
+    <div class="section-body">
+
+      <!-- EMR → 전산 반영 → 청구 흐름도 -->
+      <div class="card" style="padding:1.25rem 1.5rem">
+        <div class="card-hd" style="margin-bottom:.875rem">
+          <div><div class="card-title">문제 구조 · EMR 입력–전산 반영–청구 흐름</div><div class="card-sub">입력이 완료되어도 각 단계의 반영 여부를 별도 확인해야 함</div></div>
+        </div>
+        <div style="display:flex;align-items:stretch;gap:0">
+          <div style="flex:1;background:var(--pri-hl);border:1px solid rgba(59,130,246,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+            <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--pri);margin-bottom:.5rem">① EMR 입력</div>
+            <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">간호사 처방·처치 기록</div>
+            <div style="font-size:.7rem;color:var(--muted);line-height:1.6">산소 flow 변경<br>소모품 사용 기록<br>인공호흡기 시간 입력</div>
+            <div style="margin-top:.625rem;font-size:.65rem;color:var(--pri);background:rgba(59,130,246,.1);border-radius:4px;padding:3px 7px;display:inline-block">EMR에 기록됨</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">자동 반영?</span>
+          </div>
+          <div style="flex:1;background:var(--warn-hl);border:1px solid rgba(245,158,11,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+            <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn);margin-bottom:.5rem">② 전산 반영</div>
+            <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">청구 시스템 수량 확정</div>
+            <div style="font-size:.7rem;color:var(--muted);line-height:1.6">연속형 항목 일괄 정산<br>재고 수량 대조<br>이브닝 cost 처리</div>
+            <div style="margin-top:.625rem;font-size:.65rem;color:var(--warn);background:rgba(245,158,11,.1);border-radius:4px;padding:3px 7px;display:inline-block">⚠ 수동 확인 필요</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;gap:.25rem">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <span style="font-size:.6rem;color:var(--warn);white-space:nowrap">일치 여부?</span>
+          </div>
+          <div style="flex:1;background:var(--ok-hl);border:1px solid rgba(16,185,129,.25);border-radius:var(--r-md);padding:.875rem 1rem">
+            <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ok);margin-bottom:.5rem">③ 청구 완료</div>
+            <div style="font-size:.78rem;font-weight:600;margin-bottom:.375rem">실제 수가 청구 확정</div>
+            <div style="font-size:.7rem;color:var(--muted);line-height:1.6">보험 청구 수량 확정<br>입력값 = 청구값 일치<br>교대별 정산 완료</div>
+            <div style="margin-top:.625rem;font-size:.65rem;color:var(--ok);background:rgba(16,185,129,.1);border-radius:4px;padding:3px 7px;display:inline-block">✓ 청구 반영</div>
+          </div>
+          <div style="display:flex;align-items:center;padding:0 .75rem">
+            <div style="width:1px;height:60%;background:var(--bdr)"></div>
+          </div>
+          <div style="flex:1.1;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);padding:.875rem 1rem;border-left:3px solid var(--err)">
+            <div style="font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--err);margin-bottom:.5rem">⚡ 현재 문제</div>
+            <div style="font-size:.7rem;color:var(--muted);line-height:1.7">
+              · ①→② 자동 반영 보장 없음<br>
+              · 연속형 항목은 교대 중 입력해도<br>&nbsp;&nbsp;이브닝 cost 별도 정산 필요<br>
+              · ②→③ 불일치 즉시 확인 불가<br>
+              · 재고 수량 ≠ 청구 수량 가능성
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--div);display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span style="font-size:.65rem;color:var(--faint);flex-shrink:0">QI 개선안 대응 →</span>
+          <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pri-hl);color:var(--pri);border:1px solid rgba(59,130,246,.2)">개선안 ① 처치 유형별 입력 기준표</span>
+          <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pri-hl);color:var(--pri);border:1px solid rgba(59,130,246,.2)">개선안 ② 교대 종료 체크리스트</span>
+          <span style="font-size:.65rem;color:var(--faint)">·</span>
+          <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--ok-hl);color:var(--ok);border:1px solid rgba(16,185,129,.2)">개선안 ③ 교육 이수 시스템</span>
+          <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--ok-hl);color:var(--ok);border:1px solid rgba(16,185,129,.2)">개선안 ④ 월별 모니터링</span>
+          <span style="font-size:.65rem;color:var(--faint)">·</span>
+          <span style="font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--pur-hl);color:var(--pur);border:1px solid rgba(167,139,250,.2)">개선안 ⑤ 자동계산 시스템 (장기)</span>
+        </div>
+      </div>
+
+      <!-- 추이 차트 + 처치 유형별 -->
+      <div class="charts-row">
+        <div class="card">
+          <div class="card-hd">
+            <div><div class="card-title">EMR-전산 반영 추이</div><div class="card-sub" id="chart-sub"></div></div>
+            <span style="font-size:.7rem;color:var(--faint);background:var(--surfoff);padding:2px 8px;border-radius:4px">— 반영 정확도 목표</span>
+          </div>
+          <div class="chart-tabs">
+            <div class="ctab active" data-chart="monthly">월별 (공식 지표)</div>
+            <div class="ctab" data-chart="weekly">주별 (반영 지연 감지)</div>
+          </div>
+          <div style="position:relative;height:210px"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">처치 유형별 현황</div><div class="card-sub">이번 달 기준 · 개선안 ① 입력 기준 포함</div></div></div>
+          <div class="chart-tabs" style="margin-bottom:.75rem">
+            <div class="ctab active" id="tab-delay" onclick="switchTypeTab('delay')">반영 지연율</div>
+            <div class="ctab" id="tab-criteria" onclick="switchTypeTab('criteria')">입력 기준표 <span class="badge-pur" style="font-size:.55rem;margin-left:2px">개선안①</span></div>
+          </div>
+          <div id="panel-delay" class="prog-list">
+            <div style="color:var(--muted);font-size:.8rem;padding:1rem;text-align:center">파일 업로드 후 처치 유형별 지연 현황이 표시됩니다.</div>
+          </div>
+          <div id="panel-criteria" style="display:none;overflow-x:auto">
+            <table style="font-size:.7rem">
+              <thead><tr><th>처치 유형</th><th>입력 시점</th><th>담당</th></tr></thead>
+              <tbody>
+                <tr><td>일회성 소모품<br><span style="color:var(--faint);font-size:.65rem">드레싱, Foley 교체 등</span></td><td style="color:var(--ok)">처치 직후 즉시</td><td>담당 간호사</td></tr>
+                <tr><td>연속형 항목<br><span style="color:var(--faint);font-size:.65rem">산소, HFNC, 인공호흡기, CRRT</span></td><td style="color:var(--warn)">교대 종료 30분 전</td><td>담당 간호사</td></tr>
+                <tr><td>지속 정주 약물</td><td style="color:var(--warn)">교대 종료 후</td><td>담당 간호사</td></tr>
+                <tr><td>수혈 완료·중단</td><td style="color:var(--ok)">완료/중단 즉시</td><td>담당 간호사</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:.625rem;font-size:.65rem;color:var(--faint);line-height:1.6">※ 개선안 ① · 교육 자료 및 간호 스테이션 라미네이팅 포스터로 배포</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 5 누락 다빈도 품목 -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">📊 주간 누락 다빈도 품목 Top 5</div>
+            <div class="card-sub">최근 7일 · 미출고 또는 실수량 &lt; 청구수량 기준 · 확정된 데이터 기반</div>
+          </div>
+        </div>
+        <div id="top5-list" class="prog-list">
+          <div style="color:var(--muted);font-size:.8rem;padding:.75rem;text-align:center">파일 확정 후 통계가 집계됩니다.</div>
+        </div>
+      </div>
+
+    </div><!-- /section-body -->
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ④ 처치 자동계산
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">⚙️</span>
+        <span class="section-title">처치 자동계산</span>
+        <span class="section-sub">이브닝 정산 · 연속처치 타이머 · 산소 수가 계산기</span>
+      </div>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">펼치기 ▼</button>
+    </div>
+    <div class="section-body" style="display:none">
+
+      <!-- 자동계산 엔진 -->
+      <div class="autocalc">
+        <div style="height:3px;background:linear-gradient(90deg,#a78bfa,#14b8a6);border-radius:99px 99px 0 0;margin:-1.25rem -1.25rem 1rem;position:relative;top:-.05rem"></div>
+        <div class="card-hd">
+          <div class="card-title" style="display:flex;align-items:center;gap:.5rem">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            연속 사용 처치 자동계산 엔진
+            <span class="badge-pur" style="font-size:.65rem">개선안 ⑤ · 장기 시스템 건의</span>
+          </div>
+          <button class="btn btn-ghost" id="calc-btn" onclick="runCalc()">▶ 이브닝 정산 계산</button>
+        </div>
+        <div style="margin-bottom:.75rem;font-size:.75rem;color:var(--muted);line-height:1.7">
+          산소처럼 연속적으로 사용되는 항목은 사용 시간 기준으로 입력되지만, 최종 청구는 이브닝 cost로 일괄 처리됩니다.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">산소 Flow 변경 기록 <span style="font-size:.65rem;color:var(--faint)">(직접 입력)</span></div>
+            <div id="flow-records" class="flow-table"></div>
+            <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+              <input id="flow-in-time" type="time" style="flex:1;min-width:90px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
+              <input id="flow-in-val" type="number" step="0.1" min="0" max="15" placeholder="L/min" style="width:72px;padding:.3rem .4rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font-family:var(--fm);font-size:.75rem" />
+              <button class="upload-btn" style="padding:.3rem .65rem;font-size:.72rem" onclick="addFlowRecord()">추가</button>
+              <button onclick="clearFlowRecords()" style="padding:.3rem .5rem;font-size:.7rem;color:var(--muted);background:none;border:1px solid var(--bdr);border-radius:var(--r-sm);cursor:pointer">초기화</button>
+            </div>
+          </div>
+          <div id="calc-result" style="display:none">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.5rem">이브닝 정산 계산 결과</div>
+            <div class="calc-result-box">
+              <div class="calc-formula" id="calc-formula"></div>
+              <div class="calc-total">
+                <div style="font-size:.65rem;color:var(--faint)">이브닝 cost 대상</div>
+                <div style="font-size:1.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#a78bfa" id="calc-total-val">—</div>
+              </div>
+              <div class="calc-note">✓ 사용 시간 기준 자동 집계 &nbsp;·&nbsp; ✓ 이브닝 cost 정산 확인 후 청구 완료</div>
+            </div>
+          </div>
+          <div id="calc-placeholder" style="display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:.75rem;border:1px dashed var(--bdr);border-radius:8px;padding:1rem">
+            ▶ 이브닝 정산 계산을 실행하세요
+          </div>
+        </div>
+      </div>
+
+      <!-- 연속처치 타이머 -->
+      <div class="card" id="timer-section">
+        <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="card-title">⏱ 연속처치 타이머</div><div class="card-sub">환자별 처치 시작·종료 시간 기록 및 수가 자동 계산</div></div>
+          <button class="upload-btn" style="padding:.35rem .8rem;font-size:.8rem" onclick="openAddTimerModal()">+ 환자 추가</button>
+        </div>
+        <div id="timer-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+          <div style="font-size:.8rem;font-weight:600;color:var(--muted)">📋 오늘의 정산 목록</div>
+          <button class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="printHandoverCards()">🖨️ 인수인계 카드 인쇄</button>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%">
+            <thead><tr><th>환자ID</th><th>처치</th><th>시작</th><th>종료</th><th>총 분</th><th>수가(원)</th></tr></thead>
+            <tbody id="timer-settle-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 산소 수가 계산기 -->
+      <div class="card" id="oxygen-calc-enhanced">
+        <div class="card-hd">
+          <div><div class="card-title">🧮 산소 수가 계산기</div><div class="card-sub">시작~종료 시간 입력 → 시간 단위 자동 분할 계산</div></div>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.85rem">
+          <button id="btn-mode-flow" class="upload-btn" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('flow')">Flow (L/min)</button>
+          <button id="btn-mode-fio2" class="btn btn-ghost" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('fio2')">FiO₂ (%)</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.75rem;align-items:end">
+          <div>
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">환자 (병실)</div>
+            <input id="o2-patient" class="form-input" type="text" placeholder="예: 301호" style="font-size:.82rem">
           </div>
           <div>
-            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin B MAX</div>
-            <input id="tb-maxB" class="form-input" type="number" min="0" placeholder="비상 수량">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">시작 시간</div>
+            <input id="o2-start-time" class="form-input" type="time" style="font-size:.82rem">
           </div>
+          <div>
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">종료 시간</div>
+            <input id="o2-end-time" class="form-input" type="time" style="font-size:.82rem">
+          </div>
+          <div>
+            <div id="o2-val-label" style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Flow (L/min)</div>
+            <input id="o2-flow-val" class="form-input" type="number" step="any" placeholder="예: 0.5" style="font-size:.82rem">
+          </div>
+          <button class="upload-btn" style="font-size:.8rem;padding:.45rem .9rem" onclick="calcO2Simple()">▶ 계산</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">
+          💡 입력한 시간 범위를 시간 단위로 자동 분할하여 구간별 수가를 계산합니다. (수가 단가는 ⚙️ 설정에서 조정)
+        </div>
+        <div id="o2-result-area" style="display:none">
+          <div style="overflow-x:auto">
+            <table style="width:100%;font-size:.82rem">
+              <thead><tr><th>구간</th><th>Flow(L/min)</th><th>시간(분)</th><th>사용량(L)</th><th>수가(원)</th></tr></thead>
+              <tbody id="o2-result-body"></tbody>
+              <tfoot id="o2-result-foot" style="font-weight:700;background:rgba(59,130,246,.06)"></tfoot>
+            </table>
+          </div>
+          <button class="btn btn-ghost" style="margin-top:.5rem;font-size:.8rem" onclick="copyO2Result()">📋 합계 복사</button>
         </div>
       </div>
-      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
-        <button class="btn btn-ghost" onclick="closeTwoBinModal()">취소</button>
-        <button class="upload-btn" onclick="addTwoBinItem()">추가</button>
+
+      <!-- CSV 다운로드 -->
+      <div id="csv-download-area" style="display:none">
+        <button class="upload-btn" style="background:var(--ok,#22c55e);font-size:.82rem;padding:.4rem .9rem" onclick="downloadSettlementCSV()">📥 정산표 다운로드</button>
       </div>
-    </div>
+
+    </div><!-- /section-body -->
   </div>
 
-  <!-- ── Phase 4: 연속처치 타이머 ──────────────────────── -->
-  <div class="card" id="timer-section">
-    <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
-      <div><div class="card-title">⏱ 연속처치 타이머</div><div class="card-sub">환자별 처치 시작·종료 시간 기록 및 수가 자동 계산</div></div>
-      <button class="upload-btn" style="padding:.35rem .8rem;font-size:.8rem" onclick="openAddTimerModal()">+ 환자 추가</button>
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ⑤ Two-Bin 재고 관리
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">📦</span>
+        <span class="section-title">Two-Bin 재고 관리</span>
+        <span class="section-sub">비처방성 물품 Bin A / Bin B 현황판</span>
+      </div>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">펼치기 ▼</button>
     </div>
-    <div id="timer-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1rem"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-      <div style="font-size:.8rem;font-weight:600;color:var(--muted)">📋 오늘의 정산 목록</div>
-      <button class="btn btn-ghost" style="font-size:.75rem;padding:.2rem .6rem" onclick="printHandoverCards()">🖨️ 인수인계 카드 인쇄</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="incidents-table" style="width:100%">
-        <thead><tr><th>환자ID</th><th>처치</th><th>시작</th><th>종료</th><th>총 분</th><th>수가(원)</th></tr></thead>
-        <tbody id="timer-settle-body"></tbody>
-      </table>
-    </div>
+    <div class="section-body" style="display:none">
+
+      <div id="twobin-alert" style="display:none;align-items:center;gap:.75rem;padding:.65rem 1rem;background:var(--err-hl);border:1px solid rgba(239,68,68,.3);border-radius:var(--r-md);font-size:.82rem;font-weight:600;color:var(--err)"></div>
+
+      <div class="card" id="twobin-section">
+        <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="card-title">📦 Two-Bin 비처방성 물품 재고 현황</div><div class="card-sub">Bin A(주간 사용분) / Bin B(비상 재고) 상태 관리</div></div>
+          <button class="upload-btn" style="font-size:.78rem;padding:.3rem .7rem" onclick="openAddTwoBinModal()">+ 품목 추가</button>
+        </div>
+        <div id="twobin-table-wrap" style="overflow-x:auto">
+          <table style="width:100%;font-size:.82rem">
+            <thead><tr>
+              <th>품목명</th><th>단위</th>
+              <th>Bin A<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">주간소요</span></th>
+              <th>Bin B<br><span style="font-size:.7rem;font-weight:400;color:var(--muted)">비상재고</span></th>
+              <th>상태</th><th>보충 요청</th><th>조작</th>
+            </tr></thead>
+            <tbody id="twobin-body"></tbody>
+          </table>
+        </div>
+        <div id="twobin-empty" style="text-align:center;color:var(--muted);font-size:.82rem;padding:1.5rem">
+          + 품목 추가 버튼으로 비처방성 물품을 등록하세요
+        </div>
+      </div>
+
+    </div><!-- /section-body -->
   </div>
 
-  <!-- 타이머 추가 모달 -->
-  <div id="addTimerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
-    <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(340px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
-      <div style="font-weight:700;margin-bottom:1rem">환자 추가</div>
-      <input id="timer-patient-id" class="form-input" placeholder="환자 ID (예: 101호)" style="margin-bottom:.5rem">
-      <select id="timer-item-select" class="form-input" style="margin-bottom:.5rem">
-        <option value="산소">산소</option>
-        <option value="인공호흡기">인공호흡기</option>
-        <option value="CRRT">CRRT</option>
-        <option value="정주펌프">정주펌프</option>
-      </select>
-      <input id="timer-flow" class="form-input" placeholder="Flow L/min (산소만 해당)" type="number" step="0.5" style="margin-bottom:1rem">
-      <div style="display:flex;gap:.5rem;justify-content:flex-end">
-        <button class="btn btn-ghost" onclick="closeAddTimerModal()">취소</button>
-        <button class="upload-btn" onclick="addTimerCard()">추가</button>
+  <!-- ═══════════════════════════════════════════════════════
+       SECTION ⑥ 체크리스트 & 인시던트
+       ═══════════════════════════════════════════════════════ -->
+  <div class="dash-section">
+    <div class="section-head" onclick="toggleSection(this.querySelector('.section-toggle'))">
+      <div class="section-info">
+        <span class="section-icon">✅</span>
+        <span class="section-title">체크리스트 &amp; 인시던트</span>
+        <span class="section-sub">교대 체크리스트 · 반영 지연/불일치 사례 기록</span>
       </div>
+      <button class="section-toggle" onclick="event.stopPropagation();toggleSection(this)">접기 ▲</button>
     </div>
-  </div>
+    <div class="section-body">
 
-  <!-- ── Phase 4: 산소 수가 계산기 ────────────────────── -->
-  <div class="card" id="oxygen-calc-enhanced">
-    <div class="card-hd">
-      <div><div class="card-title">🧮 산소 수가 계산기</div><div class="card-sub">시작~종료 시간 입력 → 시간 단위 자동 분할 계산</div></div>
-    </div>
-    <!-- 모드 토글 -->
-    <div style="display:flex;gap:.5rem;margin-bottom:.85rem">
-      <button id="btn-mode-flow" class="upload-btn" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('flow')">Flow (L/min)</button>
-      <button id="btn-mode-fio2" class="btn btn-ghost" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('fio2')">FiO₂ (%)</button>
-    </div>
-    <!-- 단일 입력 폼 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.75rem;align-items:end">
-      <div>
-        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">환자 (병실)</div>
-        <input id="o2-patient" class="form-input" type="text" placeholder="예: 301호" style="font-size:.82rem">
+      <div class="bot-row">
+        <!-- 인시던트 -->
+        <div class="card">
+          <div class="card-hd" style="display:flex;justify-content:space-between;align-items:center">
+            <div><div class="card-title">반영 지연 / 불일치 사례</div><div class="card-sub">지연·불일치 원인 분류</div></div>
+            <button class="btn btn-ghost" style="font-size:.78rem;padding:.25rem .6rem;border:1px solid var(--warn,#f59e0b);color:var(--warn,#f59e0b)" onclick="toggleIncidentForm()">+ 직접 입력</button>
+          </div>
+          <div id="incident-form-area" style="display:none;background:var(--surf2);border-radius:var(--r-sm);padding:.75rem;margin-bottom:.75rem">
+            <div style="display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr auto;gap:.5rem;align-items:end">
+              <input id="inc-item" class="form-input" placeholder="항목명" style="font-size:.82rem">
+              <select id="inc-cause" class="form-input" style="font-size:.82rem">
+                <option value="입력누락">입력누락</option>
+                <option value="FiO₂미변경">FiO₂미변경</option>
+                <option value="Cost미처리">Cost미처리</option>
+                <option value="출고불일치">출고불일치</option>
+                <option value="기타">기타</option>
+              </select>
+              <select id="inc-shift" class="form-input" style="font-size:.82rem">
+                <option value="D">D (데이)</option>
+                <option value="E">E (이브닝)</option>
+                <option value="N">N (나이트)</option>
+              </select>
+              <select id="inc-priority" class="form-input" style="font-size:.82rem">
+                <option value="높음">높음</option>
+                <option value="중간">중간</option>
+                <option value="낮음">낮음</option>
+              </select>
+              <button class="upload-btn" style="font-size:.82rem;padding:.35rem .7rem;white-space:nowrap" onclick="saveManualIncident()">저장</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table id="incidents-table">
+              <thead><tr><th>항목</th><th>지연·불일치 원인</th><th>교대</th><th>우선순위</th><th>상태</th><th>날짜</th></tr></thead>
+              <tbody id="incidents-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <!-- 체크리스트 -->
+        <div class="card">
+          <div class="card-hd"><div><div class="card-title">오늘 교대 체크리스트</div><div class="card-sub" id="chk-meta"></div></div><span id="chk-count" style="font-size:.75rem;color:var(--muted);font-family:'JetBrains Mono',monospace"></span></div>
+          <div class="chklist" id="chk-list"></div>
+        </div>
       </div>
-      <div>
-        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">시작 시간</div>
-        <input id="o2-start-time" class="form-input" type="time" style="font-size:.82rem">
-      </div>
-      <div>
-        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">종료 시간</div>
-        <input id="o2-end-time" class="form-input" type="time" style="font-size:.82rem">
-      </div>
-      <div>
-        <div id="o2-val-label" style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Flow (L/min)</div>
-        <input id="o2-flow-val" class="form-input" type="number" step="any" placeholder="예: 0.5" style="font-size:.82rem">
-      </div>
-      <button class="upload-btn" style="font-size:.8rem;padding:.45rem .9rem" onclick="calcO2Simple()">▶ 계산</button>
-    </div>
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">
-      💡 입력한 시간 범위를 시간 단위로 자동 분할하여 구간별 수가를 계산합니다. (수가 단가는 ⚙️ 설정에서 조정)
-    </div>
-    <!-- 결과 -->
-    <div id="o2-result-area" style="display:none">
-      <div style="overflow-x:auto">
-        <table style="width:100%;font-size:.82rem">
-          <thead><tr><th>구간</th><th>Flow(L/min)</th><th>시간(분)</th><th>사용량(L)</th><th>수가(원)</th></tr></thead>
-          <tbody id="o2-result-body"></tbody>
-          <tfoot id="o2-result-foot" style="font-weight:700;background:rgba(59,130,246,.06)"></tfoot>
-        </table>
-      </div>
-      <button class="btn btn-ghost" style="margin-top:.5rem;font-size:.8rem" onclick="copyO2Result()">📋 합계 복사</button>
-    </div>
-  </div>
 
-  <!-- ── Phase 4: 불일치 사례 수동 입력 버튼 (incidents 카드 위) ── -->
-  <!-- (incidents 섹션 내에 삽입됨 — JS로 DOM 주입) -->
-
-  <!-- ── Phase 4: CSV 다운로드 버튼 -->
-  <div id="csv-download-area" style="display:none;margin-top:.5rem">
-    <button class="upload-btn" style="background:var(--ok,#22c55e);font-size:.82rem;padding:.4rem .9rem" onclick="downloadSettlementCSV()">📥 정산표 다운로드</button>
+    </div><!-- /section-body -->
   </div>
 
 </main>
 
-<!-- ── Phase 4: 토스트 알림 컨테이너 ──────────────────────── -->
+<!-- ── 업로드 내역 상세 조회 모달 ── -->
+<div id="historyViewModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:4000;align-items:center;justify-content:center">
+  <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(680px,95vw);max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div>
+        <div id="hv-title" style="font-weight:700;font-size:.95rem"></div>
+        <div id="hv-meta" style="font-size:.75rem;color:var(--muted);margin-top:.2rem"></div>
+      </div>
+      <button onclick="document.getElementById('historyViewModal').style.display='none'" style="font-size:1.1rem;color:var(--muted);background:none;border:none;cursor:pointer">✕</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="hv-table" style="width:100%;font-size:.8rem">
+        <thead><tr>
+          <th>품목명</th><th>단위</th><th>청구수량</th><th>출고량</th><th>미출고량</th><th>실수량</th><th>비고</th>
+        </tr></thead>
+        <tbody id="hv-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:flex-end">
+      <button class="btn btn-ghost" style="font-size:.8rem;color:var(--pur);border-color:var(--pur)" id="hv-reedit-btn" onclick="">✏️ 다시 편집</button>
+      <button class="btn btn-ghost" style="font-size:.8rem" onclick="document.getElementById('historyViewModal').style.display='none'">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Two-Bin 추가 모달 -->
+<div id="twoBinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+  <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(380px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div style="font-weight:700;margin-bottom:1rem">📦 품목 추가</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <input id="tb-name" class="form-input" placeholder="품목명 (예: 거즈 10x10)">
+      <input id="tb-unit" class="form-input" placeholder="단위 (예: 봉, 개, 박스)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin A MAX</div>
+          <input id="tb-maxA" class="form-input" type="number" min="0" placeholder="최대 수량">
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.3rem">Bin B MAX</div>
+          <input id="tb-maxB" class="form-input" type="number" min="0" placeholder="비상 수량">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-ghost" onclick="closeTwoBinModal()">취소</button>
+      <button class="upload-btn" onclick="addTwoBinItem()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 타이머 추가 모달 -->
+<div id="addTimerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+  <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(340px,90vw);box-shadow:0 8px 32px rgba(0,0,0,.3)">
+    <div style="font-weight:700;margin-bottom:1rem">환자 추가</div>
+    <input id="timer-patient-id" class="form-input" placeholder="환자 ID (예: 101호)" style="margin-bottom:.5rem">
+    <select id="timer-item-select" class="form-input" style="margin-bottom:.5rem">
+      <option value="산소">산소</option>
+      <option value="인공호흡기">인공호흡기</option>
+      <option value="CRRT">CRRT</option>
+      <option value="정주펌프">정주펌프</option>
+    </select>
+    <input id="timer-flow" class="form-input" placeholder="Flow L/min (산소만 해당)" type="number" step="0.5" style="margin-bottom:1rem">
+    <div style="display:flex;gap:.5rem;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeAddTimerModal()">취소</button>
+      <button class="upload-btn" onclick="addTimerCard()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 알림 -->
 <div id="toast-container" style="position:fixed;top:60px;right:16px;z-index:9990;display:flex;flex-direction:column;gap:.5rem;pointer-events:none"></div>
 
-<!-- ── Phase 4: 인수인계 카드 인쇄 영역 (print only) ─────── -->
+<!-- 인수인계 카드 인쇄 영역 (print only) -->
 <div id="handover-print-area" style="display:none">
   <div style="padding:2rem;font-family:'Noto Sans KR',sans-serif;max-width:800px;margin:0 auto">
     <div style="text-align:center;margin-bottom:1.5rem;border-bottom:2px solid #333;padding-bottom:.75rem">
@@ -765,20 +903,12 @@
       <h2 style="font-size:1.3rem;font-weight:700;margin:0">📋 연속처치 수가 인수인계 양식</h2>
       <div id="handover-print-date" style="font-size:.8rem;color:#555;margin-top:.3rem"></div>
     </div>
-
-    <!-- 연속처치 정산 테이블 -->
     <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #3b82f6;padding-left:.5rem">연속처치 타이머 정산 내역</h3>
     <div id="handover-print-content" style="margin-bottom:1.5rem"></div>
-
-    <!-- 체크리스트 -->
     <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #22c55e;padding-left:.5rem">수가 입력 확인 체크리스트</h3>
     <div id="handover-print-checklist" style="margin-bottom:2rem"></div>
-
-    <!-- 전달 사항 -->
     <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #f59e0b;padding-left:.5rem">특이사항 및 전달 사항</h3>
     <div style="border:1px solid #ccc;min-height:80px;margin-bottom:2rem;padding:.5rem;font-size:.82rem" id="handover-print-notes"></div>
-
-    <!-- 서명란 -->
     <table style="width:100%;border-collapse:collapse;font-size:.85rem">
       <tr>
         <td style="border:1px solid #ccc;padding:.75rem 1rem;text-align:center;width:33%">
@@ -801,20 +931,11 @@
   </div>
 </div>
 
-<!-- 인수인계 카드 출력 버튼 (타이머 정산 목록 옆에 표시) -->
-
-<!-- ── Phase 4: COST 입력 가이드 고정 버튼 ─────────────── -->
+<!-- COST 입력 가이드 FAB -->
 <div id="guide-fab" style="position:fixed;bottom:24px;right:24px;z-index:9999">
   <button class="upload-btn" style="border-radius:20px;padding:.5rem 1rem;font-size:.83rem;box-shadow:0 4px 16px rgba(0,0,0,.18)" onclick="toggleGuidePanel()">💡 COST 입력 가이드</button>
 </div>
-
-<!-- 가이드 슬라이드업 패널 -->
-<div id="guide-panel" style="
-  position:fixed;bottom:70px;right:24px;width:min(380px,90vw);
-  max-height:70vh;overflow-y:auto;
-  background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);
-  box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:9998;
-  display:none;padding:1rem">
+<div id="guide-panel" style="position:fixed;bottom:70px;right:24px;width:min(380px,90vw);max-height:70vh;overflow-y:auto;background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r-lg);box-shadow:0 8px 32px rgba(0,0,0,.18);z-index:9998;display:none;padding:1rem">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
     <strong style="font-size:.9rem">처치 유형별 COST 입력 가이드</strong>
     <button onclick="toggleGuidePanel()" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--muted)">✕</button>
@@ -829,9 +950,8 @@
   </div>
   <div id="guide-content" style="font-size:.82rem;line-height:1.6"></div>
 </div>
-</div>
 
-<!-- ── 듀티 마감 알람 모달 ──────────────────────────────── -->
+<!-- 듀티 마감 알람 모달 -->
 <div id="duty-alarm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center">
   <div style="background:var(--surf);border-radius:var(--r-lg);padding:2rem;max-width:400px;border:2px solid var(--warn);text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)">
     <div style="font-size:2rem;margin-bottom:.75rem">⚠️</div>
@@ -840,7 +960,7 @@
   </div>
 </div>
 
-<!-- ── MAX 재고 설정 모달 ─────────────────────────────── -->
+<!-- MAX 재고 설정 모달 -->
 <div id="max-settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;align-items:center;justify-content:center">
   <div style="background:var(--surf);border-radius:var(--r-lg);padding:1.5rem;width:min(440px,90vw);max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.3)">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
@@ -853,7 +973,7 @@
     <div id="max-list" style="display:flex;flex-direction:column;gap:.375rem;margin-bottom:.875rem"></div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <input id="max-item-name" placeholder="품목명 입력" style="flex:1;min-width:120px;padding:.375rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
-      <input id="max-item-qty"  type="number" placeholder="MAX 수량" min="1" style="width:90px;padding:.375rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
+      <input id="max-item-qty" type="number" placeholder="MAX 수량" min="1" style="width:90px;padding:.375rem .5rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r-sm);color:inherit;font:inherit;font-size:.8rem" />
       <button class="upload-btn" style="padding:.375rem .75rem" onclick="addMaxSetting()">추가</button>
     </div>
     <div style="margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--bdr)">
@@ -862,9 +982,10 @@
   </div>
 </div>
 
-<!-- ── 라벨 인쇄 영역 (print only) ────────────────────── -->
+<!-- 라벨 인쇄 영역 (print only) -->
 <div id="print-label-area" style="display:none;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1.5rem"></div>
 
+</div><!-- /app -->
 <script src="/static/js/main.js"></script>
 </body>
 </html>
