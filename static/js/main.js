@@ -1708,6 +1708,114 @@ window.toggleResolved = function(id) {
 // 페이지 로드 시 뱃지 초기화
 updateIncidentBadge();
 
+// ── 수간호사 모드 뷰 ─────────────────────────────────────────
+function toggleHeadNurseView() {
+  const el = document.getElementById('head-nurse-view');
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) refreshHeadNurseView();
+}
+
+function refreshHeadNurseView() {
+  // 1. 체크리스트 완료율
+  const chkKey = 'checklist_' + _TODAY;
+  const chkSaved = JSON.parse(localStorage.getItem(chkKey) || 'null');
+  const totalItems = (typeof CHECKLIST_ITEMS !== 'undefined') ? CHECKLIST_ITEMS.length : 8;
+  const el_rate = document.getElementById('hn-checklist-rate');
+  const el_detail = document.getElementById('hn-checklist-detail');
+  if (chkSaved) {
+    const doneCount = Object.values(chkSaved).filter(v => v === true).length;
+    const pct = Math.round(doneCount / totalItems * 100);
+    if (el_rate) { el_rate.textContent = pct + '%'; el_rate.style.color = pct >= 80 ? 'var(--ok)' : pct >= 50 ? 'var(--warn)' : 'var(--err)'; }
+    if (el_detail) el_detail.textContent = `${doneCount} / ${totalItems} 항목 완료`;
+  } else {
+    if (el_rate) { el_rate.textContent = '—'; el_rate.style.color = 'var(--muted)'; }
+    if (el_detail) el_detail.textContent = '오늘 체크리스트 기록 없음';
+  }
+
+  // 2. 타이머 정산 건수
+  const timers = JSON.parse(localStorage.getItem(`timers_${_TODAY}`) || '[]');
+  const totalCharge = timers.reduce((s, t) => s + (t.charge || 0), 0);
+  const el_tc = document.getElementById('hn-timer-count');
+  const el_tt = document.getElementById('hn-timer-total');
+  if (el_tc) el_tc.textContent = timers.length + '건';
+  if (el_tt) el_tt.textContent = timers.length ? `합계 ${totalCharge.toLocaleString()}원` : '오늘 정산 기록 없음';
+
+  // 3. 인시던트 미처리
+  const incidents = JSON.parse(localStorage.getItem('incidents_manual') || '[]');
+  const unresolved = incidents.filter(i => !i.resolved);
+  const el_ic = document.getElementById('hn-incident-count');
+  const el_ii = document.getElementById('hn-incident-items');
+  if (el_ic) { el_ic.textContent = unresolved.length + '건'; el_ic.style.color = unresolved.length > 0 ? 'var(--warn)' : 'var(--ok)'; }
+  if (el_ii) el_ii.textContent = unresolved.length ? unresolved.slice(0,2).map(i=>i.item).join(', ') + (unresolved.length > 2 ? '…' : '') : '미처리 없음';
+
+  // 4. 비교분석 결과 (최근 업로드된 compare 결과)
+  const mismatchEl = document.getElementById('hn-mismatch-list');
+  if (mismatchEl) {
+    const compareKeys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('compare_')) compareKeys.push(k);
+    }
+    if (compareKeys.length) {
+      const lastKey = compareKeys.sort().slice(-1)[0];
+      const compareData = JSON.parse(localStorage.getItem(lastKey) || '[]');
+      const mismatched = compareData.filter(r => r['상태'] && r['상태'] !== '일치');
+      if (mismatched.length) {
+        mismatchEl.innerHTML = `<div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">최근 비교 결과: 불일치 ${mismatched.length}건</div>` +
+          `<div style="overflow-x:auto"><table style="width:100%;font-size:.8rem">
+            <thead><tr><th>품목</th><th>처방수량</th><th>불출량</th><th>차이</th><th>상태</th></tr></thead>
+            <tbody>` +
+          mismatched.slice(0, 10).map(r => {
+            const diff = (r['차이'] || 0);
+            const color = diff < 0 ? 'var(--err)' : 'var(--warn)';
+            return `<tr>
+              <td>${r['그룹'] || r['품목'] || '-'}</td>
+              <td style="font-family:var(--fm)">${r['처방_실수량'] ?? '-'}</td>
+              <td style="font-family:var(--fm)">${r['불출_출고량'] ?? '-'}</td>
+              <td style="font-family:var(--fm);color:${color};font-weight:600">${diff > 0 ? '+' : ''}${diff}</td>
+              <td><span class="tag ${diff < 0 ? 'tag-r' : 'tag-y'}">${r['상태'] || '-'}</span></td>
+            </tr>`;
+          }).join('') +
+          `</tbody></table></div>`;
+      } else {
+        mismatchEl.innerHTML = '<div style="font-size:.8rem;color:var(--ok);padding:.5rem">✅ 모든 항목 일치</div>';
+      }
+    }
+  }
+
+  // 5. 저장된 피드백 표시
+  loadHeadNurseFeedback();
+}
+
+function saveHeadNurseFeedback() {
+  const input = document.getElementById('hn-feedback-input');
+  if (!input || !input.value.trim()) return;
+  const arr = JSON.parse(localStorage.getItem('hn_feedback') || '[]');
+  arr.push({ text: input.value.trim(), date: new Date().toLocaleString('ko-KR'), author: '수간호사' });
+  localStorage.setItem('hn_feedback', JSON.stringify(arr));
+  input.value = '';
+  const saved = document.getElementById('hn-feedback-saved');
+  if (saved) { saved.style.display = 'inline'; setTimeout(() => saved.style.display = 'none', 3000); }
+  loadHeadNurseFeedback();
+}
+
+function loadHeadNurseFeedback() {
+  const container = document.getElementById('hn-prev-feedback');
+  if (!container) return;
+  const arr = JSON.parse(localStorage.getItem('hn_feedback') || '[]');
+  if (!arr.length) { container.innerHTML = ''; return; }
+  container.innerHTML = `<div style="font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem">저장된 피드백</div>` +
+    arr.slice().reverse().slice(0, 5).map(f => `
+      <div style="background:var(--surfoff);border-radius:var(--r-sm);padding:.5rem .75rem;margin-bottom:.4rem;font-size:.78rem">
+        <span style="color:var(--muted);font-size:.7rem">${f.date}</span><br>
+        ${f.text}
+      </div>`).join('');
+}
+
+
+
 // ── 7. TIMER_UNIT_PRICES 설정에서 동적 로드 ─────────────
 function _getUnitPrices() {
   const s = loadAppSettings();

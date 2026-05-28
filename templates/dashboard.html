@@ -143,9 +143,57 @@
       <div class="pg-sub">EMR 입력 → 전산 반영 → 청구 흐름 확인 모니터링</div>
     </div>
     <div style="display:flex;align-items:center;gap:.5rem">
+      <button class="btn btn-ghost" style="font-size:.77rem;padding:.3rem .7rem;border:1px solid var(--pur,#8b5cf6);color:var(--pur,#8b5cf6)" onclick="toggleHeadNurseView()">👩‍⚕️ 수간호사 모드</button>
       <div class="ptabs">
         <div class="ptab" data-period="monthly">월간</div>
         <div class="ptab active" data-period="weekly">주간 (반영 지연 감지)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 수간호사 전용 대시보드 ─────────────────────────── -->
+  <div id="head-nurse-view" style="display:none">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.75rem">
+      <!-- 오늘 체크리스트 완료율 -->
+      <div class="card" style="border-top:3px solid var(--ok)">
+        <div class="card-title" style="margin-bottom:.5rem">✅ 체크리스트 완료율 (오늘)</div>
+        <div id="hn-checklist-rate" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ok)">—</div>
+        <div id="hn-checklist-detail" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+      </div>
+      <!-- 오늘 타이머 정산 건수 -->
+      <div class="card" style="border-top:3px solid var(--pri)">
+        <div class="card-title" style="margin-bottom:.5rem">⏱️ 오늘 처치 정산 건수</div>
+        <div id="hn-timer-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--pri)">—</div>
+        <div id="hn-timer-total" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+      </div>
+      <!-- 인시던트 미처리 -->
+      <div class="card" style="border-top:3px solid var(--warn)">
+        <div class="card-title" style="margin-bottom:.5rem">⚠️ 미처리 인시던트</div>
+        <div id="hn-incident-count" style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--warn)">—</div>
+        <div id="hn-incident-items" style="font-size:.75rem;color:var(--muted);margin-top:.25rem"></div>
+      </div>
+    </div>
+
+    <!-- 불일치 항목 + 피드백 -->
+    <div class="card">
+      <div class="card-hd">
+        <div>
+          <div class="card-title">📋 수가 불일치 현황 · 피드백</div>
+          <div class="card-sub">오늘 업로드된 비교분석 결과 + 수간호사 메모</div>
+        </div>
+        <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="printHandoverCards()">🖨️ 인수인계 양식 출력</button>
+      </div>
+      <div id="hn-mismatch-list" style="margin-bottom:.75rem">
+        <div style="font-size:.8rem;color:var(--muted);padding:.5rem">비교 분석 결과가 없습니다. 메인화면에서 불출증 파일을 업로드해주세요.</div>
+      </div>
+      <div style="border-top:1px solid var(--bdr);padding-top:.75rem">
+        <div style="font-size:.8rem;font-weight:600;margin-bottom:.4rem">📝 수간호사 메모 / 피드백</div>
+        <textarea id="hn-feedback-input" rows="3" placeholder="불일치 사항에 대한 메모나 피드백을 입력하세요..." style="width:100%;box-sizing:border-box;border:1px solid var(--bdr);border-radius:var(--r-sm);padding:.5rem;font-size:.82rem;background:var(--surf2);color:var(--txt);resize:vertical"></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
+          <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="saveHeadNurseFeedback()">저장</button>
+          <div id="hn-feedback-saved" style="font-size:.75rem;color:var(--ok);align-self:center;display:none">✓ 저장됨</div>
+        </div>
+        <div id="hn-prev-feedback" style="margin-top:.75rem"></div>
       </div>
     </div>
   </div>
