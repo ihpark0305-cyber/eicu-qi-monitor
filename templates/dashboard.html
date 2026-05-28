@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="light">
+<html lang="ko" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EICU QI Monitor</title>
-<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'dark')</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -49,6 +49,63 @@
   </a>
 </nav>
 <main class="main">
+  <!-- ── HERO BANNER ──────────────────────────────────── -->
+  <div class="hero-banner">
+    <div class="hero-content">
+      <div>
+        <div class="hero-eyebrow">
+          <span class="hero-live-dot"></span>실시간 모니터링 · 중앙대병원 EICU
+        </div>
+        <h1 class="hero-title">EMR-전산 반영 현황 대시보드</h1>
+        <p class="hero-sub">수가 입력 → 전산 반영 → 청구 흐름 · AI OCR · 자동 수가 계산 통합 모니터링 시스템</p>
+        <div class="hero-feature-tags">
+          <span class="hero-ftag">🤖 AI OCR 추출</span>
+          <span class="hero-ftag">📦 Two-Bin 재고</span>
+          <span class="hero-ftag">⏱ 자동 수가 계산</span>
+          <span class="hero-ftag">📊 월별 보고서</span>
+          <span class="hero-ftag">📋 교대 체크리스트</span>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <div class="hero-stat-val" id="hero-uploads-val">0</div>
+          <div class="hero-stat-lbl">오늘 업로드</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-val c-ok" id="hero-rate-val">—</div>
+          <div class="hero-stat-lbl">반영 일치율</div>
+        </div>
+        <div class="hero-stat-divider"></div>
+        <div class="hero-stat">
+          <div class="hero-stat-val c-warn" id="hero-alerts-val">0</div>
+          <div class="hero-stat-lbl">확인 필요</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Hero 통계 동기화 -->
+  <script>
+  (function(){
+    function syncHero(){
+      var u=document.getElementById('sum-uploads');
+      var r=document.getElementById('v1');
+      var a=document.getElementById('sum-needs-review');
+      var hu=document.getElementById('hero-uploads-val');
+      var hr=document.getElementById('hero-rate-val');
+      var ha=document.getElementById('hero-alerts-val');
+      if(u&&hu) hu.textContent=u.textContent||'0';
+      if(r&&hr) hr.textContent=r.textContent||'—';
+      if(a&&ha) ha.textContent=a.textContent||'0';
+    }
+    var obs=new MutationObserver(syncHero);
+    ['sum-uploads','v1','sum-needs-review'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
+    });
+    syncHero();
+  })();
+  </script>
   <!-- ── 인수인계 포스트잇 배너 ──────────────────────────── -->
   <div id="handover-banner" style="display:none;background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.35);border-radius:var(--r-md);padding:.75rem 1rem">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
