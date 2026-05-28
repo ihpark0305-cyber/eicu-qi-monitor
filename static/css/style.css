@@ -108,10 +108,10 @@
 
 /* ── Reset ────────────────────────────────────────────── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-size:17px}
 body{
   font-family:var(--ff);
-  font-size:var(--sm);
+  font-size:var(--base);
   color:var(--txt);
   background:var(--bg);
   min-height:100dvh;
