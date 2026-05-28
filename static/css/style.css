@@ -175,3 +175,21 @@ body.presentation-mode .slide.active{display:block}
 .bl-badge{display:inline-flex;align-items:center;gap:.3rem;padding:2px 8px;border-radius:99px;font-size:.65rem;font-weight:700}
 .bl-badge-red{background:rgba(220,38,38,.12);color:#dc2626}
 .bl-badge-blk{background:rgba(100,116,139,.12);color:var(--muted)}
+
+/* ── @media print (A4 인수인계 양식) ─────────────────────── */
+@media print {
+  body { background:#fff !important; color:#000 !important; font-size:11pt; }
+  .app { display:block !important; }
+  .sidebar, .topbar, .guide-fab, #guide-panel, #guide-fab,
+  #toast-container, .main > *:not(#handover-print-area):not(#print-label-area) {
+    display:none !important;
+  }
+  #handover-print-area, #print-label-area {
+    display:block !important;
+  }
+  #handover-print-area { page-break-after: always; }
+  .main { padding: 0 !important; margin: 0 !important; }
+  table { border-collapse: collapse; }
+  table td, table th { border: 1px solid #ccc; padding: 4px 8px; font-size: 9pt; }
+  @page { size: A4 portrait; margin: 15mm; }
+}

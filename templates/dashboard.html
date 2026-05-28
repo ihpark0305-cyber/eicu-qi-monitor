@@ -38,10 +38,6 @@
   <a class="nav-item" href="/shift"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>교대별 입력률</a>
   <div class="nav-sec">자동계산</div>
   <div class="nav-item" id="nav-calc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>연속처치 자동계산<span class="badge-pur" style="margin-left:auto;font-size:.6rem">NEW</span></div>
-  <div class="nav-sec">근무 관리</div>
-  <a class="nav-item" href="/roster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>간호사 근무표</a>
-  <div class="nav-sec">발표용</div>
-  <a class="nav-item" href="/demo" style="border-left:2px solid var(--pur)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span style="color:var(--pur)">발표용 데모</span><span class="badge-pur" style="margin-left:auto;font-size:.6rem">DEMO</span></a>
   <div class="nav-sec">데이터 편집</div>
   <a class="nav-item" href="/edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>엑셀 직접 수정</a>
   <div class="nav-sec">관리</div>
@@ -63,6 +59,84 @@
       <button onclick="clearHandover()" style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;white-space:nowrap;flex-shrink:0">✓ 확인 완료</button>
     </div>
   </div>
+  <!-- ── 사용 방법 안내 카드 ─────────────────────────────── -->
+  <div class="card" id="manual-card" style="border-left:3px solid var(--pri);margin-bottom:.75rem">
+    <div class="card-hd" style="cursor:pointer" onclick="toggleManual()">
+      <div>
+        <div class="card-title">📖 사용 방법 안내</div>
+        <div class="card-sub">처음 사용하시는 분은 이 안내를 먼저 읽어주세요 (클릭하여 접기/펼치기)</div>
+      </div>
+      <span id="manual-toggle-icon" style="font-size:.85rem;color:var(--muted)">▼ 펼치기</span>
+    </div>
+    <div id="manual-body" style="display:none;margin-top:.75rem">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem">
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">① 파일 업로드</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            <b>간호처방집계</b> 엑셀 파일 또는 화면 캡처 사진을 "파일 선택" 버튼으로 업로드합니다.<br>
+            • 여러 파일을 한 번에 선택할 수 있습니다<br>
+            • 사진(JPG/PNG)은 <b>AI OCR</b>이 자동으로 수가 항목을 추출합니다<br>
+            • 엑셀(.xlsx, .csv)은 직접 파싱합니다
+          </div>
+        </div>
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">② 추출 결과 확인 및 수정</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            업로드 후 아래 표에서 추출된 수가 항목을 확인합니다.<br>
+            • 오류가 있으면 왼쪽 메뉴 <b>"엑셀 직접 수정"</b>에서 셀 단위로 수정 가능<br>
+            • 수정 후 "단독 분석" 또는 "비교 분석"을 다시 실행하세요
+          </div>
+        </div>
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--pri);margin-bottom:.4rem">③ 불일치 분석</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            <b>불출증</b> 파일을 비교 업로드하면 처방집계 vs 불출증 차이를 자동 분석합니다.<br>
+            • 상단 <b>Top 5 불일치 항목</b>에서 누락/과다 항목 확인<br>
+            • 처치 유형별 분석은 왼쪽 메뉴 <b>"처치 유형별 분석"</b>에서 확인
+          </div>
+        </div>
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--ok);margin-bottom:.4rem">④ 산소 수가 계산기</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            산소 투여 <b>시작 시간</b>과 <b>종료 시간</b>, <b>Flow(L/min)</b>를 입력 후 [▶ 계산] 클릭.<br>
+            • 시간대별로 자동 분할되어 구간별 수가 + 합계가 계산됩니다<br>
+            • FiO₂(%) 모드로 전환하면 산소 농도에서 Flow를 자동 환산합니다<br>
+            • [📋 합계 복사] 버튼으로 EMR 메모장에 붙여넣기 가능
+          </div>
+        </div>
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--warn);margin-bottom:.4rem">⑤ Two-Bin 재고 관리</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            물품별 Bin A / Bin B 재고 수량을 등록하면 현황을 한눈에 파악합니다.<br>
+            • <b>긴급</b>(빨강): Bin A 소진 → 즉시 보충 필요<br>
+            • <b>주의</b>(노랑): Bin A 50% 이하 → 보충 준비<br>
+            • MAX 설정은 상단 [⚙️ MAX 설정] 버튼에서 조정
+          </div>
+        </div>
+
+        <div style="background:var(--surfoff);border-radius:var(--r-md);padding:.85rem 1rem">
+          <div style="font-size:.8rem;font-weight:700;color:var(--pur);margin-bottom:.4rem">⑥ 인수인계 & 보고서</div>
+          <div style="font-size:.78rem;line-height:1.7;color:var(--txt)">
+            <b>인수인계 메모</b> 섹션에 다음 근무자에게 전달할 내용을 입력합니다.<br>
+            • 저장하면 화면 상단 포스트잇 배너에 표시됩니다<br>
+            • 월별 통계 보고서는 왼쪽 메뉴 <b>"월별 보고서"</b>에서 확인<br>
+            • 교대별 입력률은 <b>"교대별 입력률"</b> 메뉴에서 확인
+          </div>
+        </div>
+
+      </div>
+      <div style="margin-top:.75rem;padding:.6rem .85rem;background:rgba(59,130,246,.06);border-radius:var(--r-sm);font-size:.75rem;color:var(--muted)">
+        💡 <b>팁:</b> 데이터는 이 브라우저의 로컬 저장소에 저장됩니다. 다른 기기나 브라우저에서는 공유되지 않습니다.
+        연속처치 타이머(산소·인공호흡기·CRRT 등)는 [자동계산] 메뉴의 타이머 기능을 활용하세요.
+      </div>
+    </div>
+  </div>
+
   <div class="pg-header">
     <div>
       <div class="pg-title">EMR-전산 반영 현황 대시보드</div>
@@ -520,25 +594,38 @@
     </div>
   </div>
 
-  <!-- ── Phase 4: 산소 수가 계산기 (강화) ──────────────── -->
+  <!-- ── Phase 4: 산소 수가 계산기 ────────────────────── -->
   <div class="card" id="oxygen-calc-enhanced">
     <div class="card-hd">
-      <div><div class="card-title">🧮 산소 수가 계산기 (구간 합산)</div><div class="card-sub">Flow 또는 FiO₂ 기반 구간별 수가 계산</div></div>
+      <div><div class="card-title">🧮 산소 수가 계산기</div><div class="card-sub">시작~종료 시간 입력 → 시간 단위 자동 분할 계산</div></div>
     </div>
     <!-- 모드 토글 -->
-    <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+    <div style="display:flex;gap:.5rem;margin-bottom:.85rem">
       <button id="btn-mode-flow" class="upload-btn" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('flow')">Flow (L/min)</button>
       <button id="btn-mode-fio2" class="btn btn-ghost" style="font-size:.8rem;padding:.3rem .7rem" onclick="setO2Mode('fio2')">FiO₂ (%)</button>
     </div>
-    <!-- 헤더 라벨 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.25rem;font-size:.75rem;color:var(--muted)">
-      <span id="o2-val-label">Flow (L/min)</span><span>시작 시간</span><span>종료 시간</span><span></span>
+    <!-- 단일 입력 폼 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.5rem;margin-bottom:.75rem;align-items:end">
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">환자 (병실)</div>
+        <input id="o2-patient" class="form-input" type="text" placeholder="예: 301호" style="font-size:.82rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">시작 시간</div>
+        <input id="o2-start-time" class="form-input" type="time" style="font-size:.82rem">
+      </div>
+      <div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">종료 시간</div>
+        <input id="o2-end-time" class="form-input" type="time" style="font-size:.82rem">
+      </div>
+      <div>
+        <div id="o2-val-label" style="font-size:.72rem;color:var(--muted);margin-bottom:.25rem">Flow (L/min)</div>
+        <input id="o2-flow-val" class="form-input" type="number" step="any" placeholder="예: 0.5" style="font-size:.82rem">
+      </div>
+      <button class="upload-btn" style="font-size:.8rem;padding:.45rem .9rem" onclick="calcO2Simple()">▶ 계산</button>
     </div>
-    <!-- 구간 입력 -->
-    <div id="o2-segments"></div>
-    <div style="display:flex;gap:.5rem;margin-top:.5rem;margin-bottom:.75rem">
-      <button class="btn btn-ghost" style="font-size:.8rem" onclick="addO2Row()">+ 구간 추가</button>
-      <button class="upload-btn" style="font-size:.8rem;padding:.3rem .8rem" onclick="calcO2Enhanced()">▶ 계산</button>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">
+      💡 입력한 시간 범위를 시간 단위로 자동 분할하여 구간별 수가를 계산합니다. (수가 단가는 ⚙️ 설정에서 조정)
     </div>
     <!-- 결과 -->
     <div id="o2-result-area" style="display:none">
@@ -546,7 +633,7 @@
         <table style="width:100%;font-size:.82rem">
           <thead><tr><th>구간</th><th>Flow(L/min)</th><th>시간(분)</th><th>사용량(L)</th><th>수가(원)</th></tr></thead>
           <tbody id="o2-result-body"></tbody>
-          <tfoot id="o2-result-foot" style="font-weight:700;background:var(--primary-soft,#e8f0fe)"></tfoot>
+          <tfoot id="o2-result-foot" style="font-weight:700;background:rgba(59,130,246,.06)"></tfoot>
         </table>
       </div>
       <button class="btn btn-ghost" style="margin-top:.5rem;font-size:.8rem" onclick="copyO2Result()">📋 합계 복사</button>
@@ -568,10 +655,45 @@
 
 <!-- ── Phase 4: 인수인계 카드 인쇄 영역 (print only) ─────── -->
 <div id="handover-print-area" style="display:none">
-  <div style="padding:1.5rem;font-family:'Noto Sans KR',sans-serif">
-    <h2 style="font-size:1.1rem;margin-bottom:.5rem">📋 연속처치 인수인계 요약</h2>
-    <div id="handover-print-content"></div>
-    <div style="margin-top:1rem;font-size:.75rem;color:#666">출력일시: <span id="handover-print-date"></span></div>
+  <div style="padding:2rem;font-family:'Noto Sans KR',sans-serif;max-width:800px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:1.5rem;border-bottom:2px solid #333;padding-bottom:.75rem">
+      <div style="font-size:.85rem;color:#666;margin-bottom:.2rem">중앙대병원 EICU</div>
+      <h2 style="font-size:1.3rem;font-weight:700;margin:0">📋 연속처치 수가 인수인계 양식</h2>
+      <div id="handover-print-date" style="font-size:.8rem;color:#555;margin-top:.3rem"></div>
+    </div>
+
+    <!-- 연속처치 정산 테이블 -->
+    <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #3b82f6;padding-left:.5rem">연속처치 타이머 정산 내역</h3>
+    <div id="handover-print-content" style="margin-bottom:1.5rem"></div>
+
+    <!-- 체크리스트 -->
+    <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #22c55e;padding-left:.5rem">수가 입력 확인 체크리스트</h3>
+    <div id="handover-print-checklist" style="margin-bottom:2rem"></div>
+
+    <!-- 전달 사항 -->
+    <h3 style="font-size:.95rem;font-weight:700;margin-bottom:.5rem;border-left:3px solid #f59e0b;padding-left:.5rem">특이사항 및 전달 사항</h3>
+    <div style="border:1px solid #ccc;min-height:80px;margin-bottom:2rem;padding:.5rem;font-size:.82rem" id="handover-print-notes"></div>
+
+    <!-- 서명란 -->
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <tr>
+        <td style="border:1px solid #ccc;padding:.75rem 1rem;text-align:center;width:33%">
+          <div style="font-weight:700;margin-bottom:.5rem">인계자 (서명)</div>
+          <div style="height:40px;border-bottom:1px solid #333;margin:0 1rem"></div>
+          <div style="margin-top:.25rem;font-size:.75rem;color:#888">이름: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        </td>
+        <td style="border:1px solid #ccc;padding:.75rem 1rem;text-align:center;width:33%">
+          <div style="font-weight:700;margin-bottom:.5rem">인수자 (서명)</div>
+          <div style="height:40px;border-bottom:1px solid #333;margin:0 1rem"></div>
+          <div style="margin-top:.25rem;font-size:.75rem;color:#888">이름: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        </td>
+        <td style="border:1px solid #ccc;padding:.75rem 1rem;text-align:center;width:33%">
+          <div style="font-weight:700;margin-bottom:.5rem">수간호사 확인 (서명)</div>
+          <div style="height:40px;border-bottom:1px solid #333;margin:0 1rem"></div>
+          <div style="margin-top:.25rem;font-size:.75rem;color:#888">이름: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+        </td>
+      </tr>
+    </table>
   </div>
 </div>
 
