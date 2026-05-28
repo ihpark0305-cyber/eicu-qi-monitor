@@ -2,9 +2,9 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "EICU QI App",
+      "name": "eicu-qi",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["app.py"],
+      "runtimeArgs": ["-c", "import sys,os; os.chdir('C:/Users/hpark/OneDrive/문서/수업/실습/간호관리학실습_중앙대병원/eicu_qi_app'); sys.path.insert(0,'.'); import app as a; a.app.run(port=5001,debug=False,use_reloader=False)"],
       "port": 5001
     }
   ]

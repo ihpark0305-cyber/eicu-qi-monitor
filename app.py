@@ -11,7 +11,11 @@ from modules import scheduler as sch
 app = Flask(__name__)
 
 @app.route("/")
-def index():
+def home():
+    return render_template("home.html")
+
+@app.route("/dashboard")
+def dashboard():
     return render_template("dashboard.html")
 
 @app.route("/api/trend")

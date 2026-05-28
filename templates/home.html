@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>홈 · EICU QI Monitor</title>
+<script>document.documentElement.setAttribute('data-theme',localStorage.getItem('eicu_theme')||'light')</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app">
+
+<header class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#fff" fill-opacity="0.2"/><path d="M6 14h4M6 9.5h4M6 18.5h4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><rect x="13" y="7" width="9" height="14" rx="2" stroke="#fff" stroke-width="1.5"/><path d="M16 11h3M16 14.5h2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>EICU QI Monitor</span>
+    </div>
+    <span class="badge">중앙대병원 EICU · 13병상</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button class="theme-btn" onclick="(function(){var h=document.documentElement;var n=h.dataset.theme==='dark'?'light':'dark';h.dataset.theme=n;localStorage.setItem('eicu_theme',n)})()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<nav class="sidebar">
+  <a class="nav-item active" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    홈
+  </a>
+  <div class="nav-sec">모니터링</div>
+  <a class="nav-item" href="/dashboard">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    EMR 반영 현황
+  </a>
+  <a class="nav-item" href="/analysis">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    처치 유형별 분석
+  </a>
+  <a class="nav-item" href="/shift">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+    교대별 입력률
+  </a>
+  <div class="nav-sec">데이터 편집</div>
+  <a class="nav-item" href="/edit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    엑셀 직접 수정
+  </a>
+  <div class="nav-sec">관리</div>
+  <a class="nav-item" href="/report">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    월별 보고서
+  </a>
+  <a class="nav-item" href="/roster">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    근무 로스터
+  </a>
+  <a class="nav-item" href="/effects">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    기대 효과
+  </a>
+  <a class="nav-item" href="/settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    설정
+  </a>
+</nav>
+
+<main class="main">
+
+  <!-- ── Hero greeting ── -->
+  <div class="home-hero">
+    <div class="home-hero-left">
+      <div class="home-greeting" id="home-greeting">중앙대병원 EICU</div>
+      <div class="home-date-big" id="home-date-big">—</div>
+      <div class="home-date-sub" id="home-date-sub">—</div>
+      <div class="home-shift-badge" id="home-shift-badge">
+        <span id="shift-dot" style="width:7px;height:7px;border-radius:50%;background:#fff;display:inline-block;animation:live-pulse 2s infinite"></span>
+        <span id="home-shift-label">교대 확인 중</span>
+      </div>
+    </div>
+    <div class="home-hero-right">
+      <div class="home-stat-block">
+        <div class="home-stat-num" id="hero-upload-count">0</div>
+        <div class="home-stat-lbl">오늘 업로드</div>
+      </div>
+      <div class="home-stat-block">
+        <div class="home-stat-num" id="hero-memo-count">0</div>
+        <div class="home-stat-lbl">달력 메모</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main grid: calendar + widgets ── -->
+  <div class="home-grid">
+
+    <!-- 달력 -->
+    <div class="card home-calendar">
+      <div class="home-cal-header">
+        <button class="cal-nav-btn" id="cal-prev" onclick="changeMonth(-1)">‹</button>
+        <span class="home-cal-month" id="home-cal-month">2026년 5월</span>
+        <button class="cal-nav-btn" id="cal-next" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="home-day-names">
+        <span style="color:#EF4444">일</span>
+        <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span>
+        <span style="color:#6366F1">토</span>
+      </div>
+      <div class="home-cal-grid" id="home-cal-grid"></div>
+
+      <!-- 선택한 날짜의 메모 -->
+      <div class="cal-memo-area" id="cal-memo-area" style="display:none">
+        <div class="cal-memo-date" id="cal-memo-date"></div>
+        <textarea id="cal-memo-input" class="cal-memo-input" placeholder="이 날짜에 메모를 입력하세요..."></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;align-items:center">
+          <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="saveCalMemo()">💾 저장</button>
+          <button class="btn btn-ghost" style="font-size:.78rem;padding:.3rem .75rem" onclick="deleteCalMemo()">🗑 삭제</button>
+          <span id="cal-memo-saved" style="display:none;font-size:.72rem;color:var(--ok)">✓ 저장됨</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 위젯 열 -->
+    <div class="home-widgets">
+
+      <!-- 실시간 시계 -->
+      <div class="card clock-widget">
+        <div class="card-title" style="margin-bottom:.75rem">🕐 현재 시간</div>
+        <div class="clock-time" id="clock-time">00:00:00</div>
+        <div class="clock-date" id="clock-date"></div>
+        <div style="margin-top:.5rem">
+          <span class="clock-shift" id="clock-shift">교대 확인 중</span>
+        </div>
+      </div>
+
+      <!-- 날씨 -->
+      <div class="card weather-widget">
+        <div class="card-title" style="margin-bottom:.75rem">🌤 현재 날씨</div>
+        <div id="weather-loading" style="font-size:.8rem;color:var(--muted)">날씨 불러오는 중…</div>
+        <div id="weather-content" style="display:none">
+          <div class="weather-top">
+            <div class="weather-emoji" id="weather-emoji">🌤</div>
+            <div>
+              <div class="weather-temp" id="weather-temp">—°C</div>
+              <div class="weather-desc" id="weather-desc">—</div>
+            </div>
+          </div>
+          <div class="weather-meta">서울 · 중앙대병원</div>
+          <div class="weather-details">
+            <div class="weather-detail">체감 <strong id="weather-feel">—</strong></div>
+            <div class="weather-detail">풍속 <strong id="weather-wind">—</strong></div>
+            <div class="weather-detail">습도 <strong id="weather-humidity">—</strong></div>
+          </div>
+        </div>
+        <div id="weather-error" style="display:none;font-size:.75rem;color:var(--muted)">날씨 정보를 불러올 수 없습니다.</div>
+      </div>
+
+      <!-- 인수인계 메모 -->
+      <div class="card memo-widget">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">📌 인수인계 메모</div>
+            <div class="card-sub" id="memo-shift-label">현재 교대</div>
+          </div>
+        </div>
+        <textarea id="handover-memo-input" class="memo-textarea" placeholder="다음 근무자에게 전달할 내용을 입력하세요..."></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;align-items:center">
+          <button class="upload-btn" style="font-size:.78rem;padding:.3rem .75rem" onclick="saveHandoverMemo()">💾 저장</button>
+          <span id="memo-saved-indicator" style="display:none;font-size:.72rem;color:var(--ok)">✓ 저장됨</span>
+        </div>
+        <div id="prev-memo-section" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--div)">
+          <div style="font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.3rem" id="prev-memo-label">이전 교대 메모</div>
+          <div id="prev-memo-text" style="font-size:.78rem;color:var(--txt);line-height:1.6;background:var(--surf2);border-radius:var(--r-sm);padding:.5rem .75rem"></div>
+        </div>
+      </div>
+
+    </div><!-- /home-widgets -->
+  </div><!-- /home-grid -->
+
+  <!-- ── 빠른 이동 ── -->
+  <div class="home-section-title">빠른 이동</div>
+  <div class="quick-links-grid">
+    <a class="quick-card" href="/dashboard">
+      <div class="quick-icon">📊</div>
+      <div class="quick-name">EMR 반영 현황</div>
+      <div class="quick-desc">수가 입력 · 전산 반영 · 청구 흐름 모니터링</div>
+    </a>
+    <a class="quick-card" href="/analysis">
+      <div class="quick-icon">📈</div>
+      <div class="quick-name">처치 유형별 분석</div>
+      <div class="quick-desc">산소 · 인공호흡기 · CRRT · 교대별 입력 현황</div>
+    </a>
+    <a class="quick-card" href="/shift">
+      <div class="quick-icon">👥</div>
+      <div class="quick-name">교대별 입력률</div>
+      <div class="quick-desc">D / E / N 교대별 업로드 및 입력 완료율</div>
+    </a>
+    <a class="quick-card" href="/report">
+      <div class="quick-icon">📋</div>
+      <div class="quick-name">월별 보고서</div>
+      <div class="quick-desc">월간 통계 · QI 개선 지표 · PDF 출력</div>
+    </a>
+    <a class="quick-card" href="/roster">
+      <div class="quick-icon">🗓</div>
+      <div class="quick-name">근무 로스터</div>
+      <div class="quick-desc">간호사 근무 일정 자동 생성 · 편집</div>
+    </a>
+    <a class="quick-card" href="/settings">
+      <div class="quick-icon">⚙️</div>
+      <div class="quick-name">설정</div>
+      <div class="quick-desc">수가 단가 · 알림 임계값 · 시스템 설정</div>
+    </a>
+  </div>
+
+</main>
+</div><!-- /app -->
+
+<script>
+/* ─── 날짜/시간/교대 유틸 ─── */
+var CAL_STATE = { year: 0, month: 0, selectedKey: null };
+var TODAY = new Date();
+
+function getShift(h) {
+  if (h >= 8 && h < 16)  return { label: 'Day 근무 (08:00–16:00)',  short: 'D교대', color: '#10B981' };
+  if (h >= 16 && h < 24) return { label: 'Evening 근무 (16:00–24:00)', short: 'E교대', color: '#F59E0B' };
+  return                        { label: 'Night 근무 (00:00–08:00)', short: 'N교대', color: '#6366F1' };
+}
+
+var DAY_KO = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+var MONTH_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+/* ─── 히어로 날짜 ─── */
+(function initHero() {
+  var now = new Date();
+  document.getElementById('home-date-big').textContent = DAY_KO[now.getDay()];
+  document.getElementById('home-date-sub').textContent =
+    now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일';
+  var s = getShift(now.getHours());
+  document.getElementById('home-shift-label').textContent = s.label;
+  document.getElementById('home-shift-badge').style.background = 'rgba(255,255,255,0.2)';
+})();
+
+/* ─── 히어로 통계 ─── */
+(function initHeroStats() {
+  // 오늘 업로드 수 (localStorage)
+  var today = TODAY.toISOString().slice(0,10);
+  var uploadCount = 0;
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.startsWith('upload_') && k.includes(today)) uploadCount++;
+  }
+  document.getElementById('hero-upload-count').textContent = uploadCount;
+
+  // 달력 메모 수
+  var memoCount = 0;
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (k && k.startsWith('eicu_cal_memo_') && localStorage.getItem(k)) memoCount++;
+  }
+  document.getElementById('hero-memo-count').textContent = memoCount;
+})();
+
+/* ─── 실시간 시계 ─── */
+function tickClock() {
+  var now = new Date();
+  var hh = String(now.getHours()).padStart(2,'0');
+  var mm = String(now.getMinutes()).padStart(2,'0');
+  var ss = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock-time').textContent = hh + ':' + mm + ':' + ss;
+  document.getElementById('clock-date').textContent =
+    now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일 ' + DAY_KO[now.getDay()];
+  var s = getShift(now.getHours());
+  var el = document.getElementById('clock-shift');
+  el.textContent = s.short + ' 근무중';
+  el.style.background = s.color + '22';
+  el.style.color = s.color;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ─── 인수인계 메모 ─── */
+(function initMemo() {
+  var now = new Date();
+  var s = getShift(now.getHours());
+  var shiftKey = 'eicu_handover_' + s.short;
+  var labels = { 'D교대': 'D교대 인수인계 메모', 'E교대': 'E교대 인수인계 메모', 'N교대': 'N교대 인수인계 메모' };
+  var prevMap = { 'D교대': 'N교대', 'E교대': 'D교대', 'N교대': 'E교대' };
+  document.getElementById('memo-shift-label').textContent = labels[s.short] || '현재 교대';
+
+  var saved = localStorage.getItem(shiftKey);
+  if (saved) document.getElementById('handover-memo-input').value = saved;
+
+  var prevKey = 'eicu_handover_' + prevMap[s.short];
+  var prevMemo = localStorage.getItem(prevKey);
+  if (prevMemo) {
+    document.getElementById('prev-memo-label').textContent = prevMap[s.short] + ' 메모 (읽기 전용)';
+    document.getElementById('prev-memo-text').textContent = prevMemo;
+    document.getElementById('prev-memo-section').style.display = '';
+  }
+
+  window._homeShiftKey = shiftKey;
+})();
+
+function saveHandoverMemo() {
+  var val = document.getElementById('handover-memo-input').value.trim();
+  localStorage.setItem(window._homeShiftKey, val);
+  var ind = document.getElementById('memo-saved-indicator');
+  ind.style.display = '';
+  setTimeout(function(){ ind.style.display = 'none'; }, 2000);
+}
+
+/* ─── 날씨 ─── */
+(function loadWeather() {
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true&hourly=relativehumidity_2m,apparent_temperature&timezone=Asia%2FSeoul&forecast_days=1')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var cw = d.current_weather;
+      var code = cw.weathercode;
+      var temp = Math.round(cw.temperature);
+      var wind = Math.round(cw.windspeed);
+
+      // 현재 시간 인덱스로 apparent_temperature 찾기
+      var nowH = new Date().getHours();
+      var feel = d.hourly && d.hourly.apparent_temperature ? Math.round(d.hourly.apparent_temperature[nowH]) : temp;
+      var hum  = d.hourly && d.hourly.relativehumidity_2m ? d.hourly.relativehumidity_2m[nowH] : '—';
+
+      // WMO 코드 → 한국어 + 이모지
+      function codeToDesc(c) {
+        if (c === 0) return { desc:'맑음', emoji:'☀️' };
+        if (c <= 2)  return { desc:'구름 조금', emoji:'🌤' };
+        if (c === 3) return { desc:'흐림', emoji:'☁️' };
+        if (c <= 49) return { desc:'안개', emoji:'🌫' };
+        if (c <= 59) return { desc:'이슬비', emoji:'🌦' };
+        if (c <= 69) return { desc:'비', emoji:'🌧' };
+        if (c <= 79) return { desc:'눈', emoji:'❄️' };
+        if (c <= 82) return { desc:'소나기', emoji:'🌦' };
+        if (c <= 99) return { desc:'뇌우', emoji:'⛈' };
+        return { desc:'알 수 없음', emoji:'🌡' };
+      }
+      var w = codeToDesc(code);
+
+      document.getElementById('weather-emoji').textContent = w.emoji;
+      document.getElementById('weather-temp').textContent = temp + '°C';
+      document.getElementById('weather-desc').textContent = w.desc;
+      document.getElementById('weather-feel').textContent = feel + '°C';
+      document.getElementById('weather-wind').textContent = wind + 'km/h';
+      document.getElementById('weather-humidity').textContent = hum + '%';
+
+      document.getElementById('weather-loading').style.display = 'none';
+      document.getElementById('weather-content').style.display = '';
+    })
+    .catch(function() {
+      document.getElementById('weather-loading').style.display = 'none';
+      document.getElementById('weather-error').style.display = '';
+    });
+})();
+
+/* ─── 달력 ─── */
+(function initCalendar() {
+  CAL_STATE.year = TODAY.getFullYear();
+  CAL_STATE.month = TODAY.getMonth();
+  renderCalendar();
+})();
+
+function renderCalendar() {
+  var y = CAL_STATE.year, m = CAL_STATE.month;
+  document.getElementById('home-cal-month').textContent = y + '년 ' + (m+1) + '월';
+
+  var firstDay = new Date(y, m, 1).getDay();
+  var daysInMonth = new Date(y, m+1, 0).getDate();
+  var todayY = TODAY.getFullYear(), todayM = TODAY.getMonth(), todayD = TODAY.getDate();
+
+  var html = '';
+  for (var i = 0; i < firstDay; i++) {
+    html += '<div class="home-cal-cell other-month"></div>';
+  }
+  for (var d = 1; d <= daysInMonth; d++) {
+    var key = y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var cls = 'home-cal-cell';
+    if (y === todayY && m === todayM && d === todayD) cls += ' today';
+    if (CAL_STATE.selectedKey === key) cls += ' selected';
+    var hasMemo = localStorage.getItem('eicu_cal_memo_' + key);
+    if (hasMemo) cls += ' has-memo';
+    html += '<div class="' + cls + '" onclick="selectDay(\'' + key + '\',' + d + ')">' + d + '</div>';
+  }
+  document.getElementById('home-cal-grid').innerHTML = html;
+}
+
+function changeMonth(delta) {
+  CAL_STATE.month += delta;
+  if (CAL_STATE.month > 11) { CAL_STATE.month = 0; CAL_STATE.year++; }
+  if (CAL_STATE.month < 0)  { CAL_STATE.month = 11; CAL_STATE.year--; }
+  CAL_STATE.selectedKey = null;
+  document.getElementById('cal-memo-area').style.display = 'none';
+  renderCalendar();
+}
+
+function selectDay(key, d) {
+  CAL_STATE.selectedKey = key;
+  renderCalendar();
+
+  // 메모 영역 표시
+  var parts = key.split('-');
+  document.getElementById('cal-memo-date').textContent =
+    parts[0] + '년 ' + parseInt(parts[1]) + '월 ' + parseInt(parts[2]) + '일';
+  var saved = localStorage.getItem('eicu_cal_memo_' + key) || '';
+  document.getElementById('cal-memo-input').value = saved;
+  document.getElementById('cal-memo-saved').style.display = 'none';
+  document.getElementById('cal-memo-area').style.display = '';
+  document.getElementById('cal-memo-input').focus();
+}
+
+function saveCalMemo() {
+  if (!CAL_STATE.selectedKey) return;
+  var val = document.getElementById('cal-memo-input').value.trim();
+  if (val) {
+    localStorage.setItem('eicu_cal_memo_' + CAL_STATE.selectedKey, val);
+  } else {
+    localStorage.removeItem('eicu_cal_memo_' + CAL_STATE.selectedKey);
+  }
+  renderCalendar();
+  // 히어로 메모 카운트 업데이트
+  var cnt = 0;
+  for (var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.startsWith('eicu_cal_memo_')&&localStorage.getItem(k))cnt++;}
+  document.getElementById('hero-memo-count').textContent = cnt;
+
+  var ind = document.getElementById('cal-memo-saved');
+  ind.style.display = '';
+  setTimeout(function(){ ind.style.display = 'none'; }, 2000);
+}
+
+function deleteCalMemo() {
+  if (!CAL_STATE.selectedKey) return;
+  localStorage.removeItem('eicu_cal_memo_' + CAL_STATE.selectedKey);
+  document.getElementById('cal-memo-input').value = '';
+  renderCalendar();
+  document.getElementById('cal-memo-area').style.display = 'none';
+  CAL_STATE.selectedKey = null;
+}
+</script>
+</body>
+</html>
